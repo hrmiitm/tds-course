@@ -14,8 +14,8 @@ const UP_RECT_KEY = 'tds_terminal_up_rect';
 const SIDE_RECT_KEY = 'tds_terminal_side_rect';
 const DEFAULT_LOCAL_URL = 'http://127.0.0.1:8080';
 const DEFAULT_UP_RECT: PanelRect = { x: 2, y: 32, w: 96, h: 66 };
-const DEFAULT_SIDE_RECT: PanelRect = { x: 38, y: 8, w: 60, h: 88 };
-const DEFAULT_OPACITY = 92;
+const DEFAULT_SIDE_RECT: PanelRect = { x: 50, y: 8, w: 50, h: 88 };
+const DEFAULT_OPACITY = 100;
 const MIN_W_PX = 360;
 const MIN_H_PX = 260;
 const SCREEN_PADDING_PX = 12;
@@ -31,7 +31,7 @@ function CodePanelInner(): React.ReactElement | null {
   const [inputUrl, setInputUrl] = useState('');
   const [error, setError] = useState('');
   const [showGuide, setShowGuide] = useState(true);
-  const [layout, setLayout] = useState<'up' | 'side'>('up');
+  const [layout, setLayout] = useState<'up' | 'side'>('side');
 
   useEffect(() => {
     try {
