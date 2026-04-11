@@ -5,21 +5,52 @@ import styles from './CodePanel.module.css';
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error';
 const STORAGE_KEY = 'tds_tunnel_url';
+const LAYOUT_KEY = 'tds_terminal_layout';
+const SIDE_WIDTH_KEY = 'tds_terminal_side_width';
+const OPACITY_KEY = 'tds_terminal_opacity';
 const DEFAULT_HEIGHT = 60;
+const DEFAULT_SIDE_WIDTH = 56;
+const DEFAULT_OPACITY = 92;
 
 function CodePanelInner(): React.ReactElement | null {
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [url, setUrl] = useState('');
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [sideWidth, setSideWidth] = useState(DEFAULT_SIDE_WIDTH);
+  const [panelOpacity, setPanelOpacity] = useState(DEFAULT_OPACITY);
   const [iframeKey, setIframeKey] = useState(0);
   const [inputUrl, setInputUrl] = useState('');
   const [error, setError] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [layout, setLayout] = useState<'up' | 'side'>('up');
 
   useEffect(() => {
     try { const s = localStorage.getItem(STORAGE_KEY); if (s) setUrl(s); } catch {}
+    try { const savedLayout = localStorage.getItem(LAYOUT_KEY); if (savedLayout === 'up' || savedLayout === 'side') setLayout(savedLayout); } catch {}
+    try {
+      const savedSideWidth = localStorage.getItem(SIDE_WIDTH_KEY);
+      const parsed = savedSideWidth ? Number(savedSideWidth) : NaN;
+      if (!Number.isNaN(parsed)) setSideWidth(Math.min(85, Math.max(28, parsed)));
+    } catch {}
+    try {
+      const savedOpacity = localStorage.getItem(OPACITY_KEY);
+      const parsed = savedOpacity ? Number(savedOpacity) : NaN;
+      if (!Number.isNaN(parsed)) setPanelOpacity(Math.min(100, Math.max(35, parsed)));
+    } catch {}
   }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem(LAYOUT_KEY, layout); } catch {}
+  }, [layout]);
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDE_WIDTH_KEY, String(sideWidth)); } catch {}
+  }, [sideWidth]);
+
+  useEffect(() => {
+    try { localStorage.setItem(OPACITY_KEY, String(panelOpacity)); } catch {}
+  }, [panelOpacity]);
 
   const togglePanel = useCallback(() => setIsOpen(p => !p), []);
 
@@ -46,17 +77,31 @@ function CodePanelInner(): React.ReactElement | null {
     setError(''); handleConnect(t);
   };
 
-  const isDragging = React.useRef(false);
+  const dragMode = React.useRef<'none' | 'up' | 'side'>('none');
   const startY = React.useRef(0);
   const startH = React.useRef(0);
-  const onResize = useCallback((nh: number) => setHeight(nh), []);
+  const startX = React.useRef(0);
+  const startW = React.useRef(0);
+  const onResizeHeight = useCallback((nh: number) => setHeight(nh), []);
+  const onResizeWidth = useCallback((nw: number) => setSideWidth(nw), []);
   useEffect(() => {
-    const mm = (e: MouseEvent) => { if (!isDragging.current) return; const d = startY.current - e.clientY; const n = (startH.current * window.innerHeight + d) / window.innerHeight * 100; onResize(Math.min(85, Math.max(25, n))); };
-    const mu = () => { isDragging.current = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    const mm = (e: MouseEvent) => {
+      if (dragMode.current === 'none') return;
+      if (dragMode.current === 'up') {
+        const d = startY.current - e.clientY;
+        const n = (startH.current * window.innerHeight + d) / window.innerHeight * 100;
+        onResizeHeight(Math.min(85, Math.max(25, n)));
+        return;
+      }
+      const d = startX.current - e.clientX;
+      const n = (startW.current * window.innerWidth + d) / window.innerWidth * 100;
+      onResizeWidth(Math.min(85, Math.max(28, n)));
+    };
+    const mu = () => { dragMode.current = 'none'; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
     document.addEventListener('mousemove', mm);
     document.addEventListener('mouseup', mu);
     return () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
-  }, [onResize]);
+  }, [onResizeHeight, onResizeWidth]);
 
   return (
     <>
@@ -64,8 +109,19 @@ function CodePanelInner(): React.ReactElement | null {
         {isOpen ? <X size={22} /> : <TerminalSquare size={22} />}
       </button>
       {isOpen && (
-        <div className={styles.drawer} style={{ height: `${height}vh` }}>
-          <div className={styles.resizeHandle} onMouseDown={(e) => { isDragging.current = true; startY.current = e.clientY; startH.current = height / 100; document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
+        <div
+          className={`${styles.drawer} ${layout === 'side' ? styles.drawerSide : styles.drawerUp}`}
+          style={{
+            ...(layout === 'up' ? { height: `${height}vh` } : { width: `${sideWidth}vw` }),
+            ['--tds-panel-opacity' as string]: String(panelOpacity / 100),
+          } as React.CSSProperties}
+        >
+          {layout === 'up' && (
+            <div className={styles.resizeHandle} onMouseDown={(e) => { dragMode.current = 'up'; startY.current = e.clientY; startH.current = height / 100; document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
+          )}
+          {layout === 'side' && (
+            <div className={styles.sideResizeHandle} onMouseDown={(e) => { dragMode.current = 'side'; startX.current = e.clientX; startW.current = sideWidth / 100; document.body.style.cursor = 'ew-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
+          )}
           <div className={styles.header}>
             <div className={styles.headerLeft}>
               <span className={`tds-status-dot tds-status-dot--${status}`} />
@@ -73,6 +129,20 @@ function CodePanelInner(): React.ReactElement | null {
               <span className={styles.headerStatus}>{status === 'connected' && url ? `Connected to ${url}` : status === 'connecting' ? 'Connecting…' : status === 'error' ? 'Error' : 'Not connected'}</span>
             </div>
             <div className={styles.headerActions}>
+              <div className={styles.transparencyWrap}>
+                <span className={styles.transparencyLabel}>Opacity</span>
+                <input
+                  className={styles.transparencySlider}
+                  type="range"
+                  min={35}
+                  max={100}
+                  step={1}
+                  value={panelOpacity}
+                  onChange={(e) => setPanelOpacity(Number(e.target.value))}
+                  aria-label="Adjust terminal transparency"
+                />
+              </div>
+              <button className={styles.layoutBtn} onClick={() => setLayout(v => v === 'up' ? 'side' : 'up')} aria-label="Toggle panel layout">{layout === 'up' ? 'Side' : 'Up'}</button>
               {status === 'connected' && (<>
                 <button className={styles.iconBtn} onClick={() => setIframeKey(k => k + 1)} aria-label="Refresh"><RotateCcw size={16} /></button>
                 <button className={styles.iconBtn} onClick={() => url && window.open(url, '_blank')} aria-label="New tab"><ExternalLink size={16} /></button>
