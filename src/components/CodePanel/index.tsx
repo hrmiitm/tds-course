@@ -80,7 +80,28 @@ function CodePanelInner(): React.ReactElement | null {
   const connectUrl = () => {
     const t = inputUrl.trim();
     if (!t) { setError('Please enter a URL'); return; }
-    if (!t.startsWith('https://')) { setError('URL must start with https://'); return; }
+    let parsed: URL;
+    try {
+      parsed = new URL(t);
+    } catch {
+      setError('Please enter a valid URL');
+      return;
+    }
+
+    const isLocalHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+    const isHttps = parsed.protocol === 'https:';
+    const isLocalHttp = parsed.protocol === 'http:' && isLocalHost;
+
+    if (!isHttps && !isLocalHttp) {
+      setError('Use https:// URL, or http://localhost (127.0.0.1 / ::1) for local code-server');
+      return;
+    }
+
+    if (parsed.protocol === 'http:' && !parsed.port) {
+      setError('For localhost, include the port (example: http://127.0.0.1:8080)');
+      return;
+    }
+
     setError(''); handleConnect(t);
   };
 
@@ -164,15 +185,18 @@ function CodePanelInner(): React.ReactElement | null {
             <iframe key={iframeKey} className={styles.iframe} src={url} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" allow="clipboard-read; clipboard-write" onLoad={() => setStatus('connected')} onError={() => setStatus('error')} title="Code Server" />
           ) : status === 'error' ? (
             <div className={styles.errorOverlay}>
-              <X size={18} /> Failed to connect. Check your tunnel URL.
+              <X size={18} />
+              {url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1') || url.startsWith('http://[::1]')
+                ? 'Failed to connect to local code-server. Ensure code-server is running on that localhost port.'
+                : 'Failed to connect. Check your tunnel URL.'}
               <button className={styles.layoutBtn} onClick={handleDisconnect}>Reset Session</button>
             </div>
           ) : (
             <div className={styles.connectPane}>
               <div className={styles.connectCard}>
                 <div className={styles.connectLabel}>Your code-server tunnel URL</div>
-                <div className={styles.connectHelper}>Run: cloudflared tunnel --url http://localhost:8080 then paste the HTTPS URL</div>
-                <input className={styles.connectInput} placeholder="https://abc123.trycloudflare.com" value={inputUrl} onChange={e => { setInputUrl(e.target.value); if (error) setError(''); }} onKeyDown={e => e.key === 'Enter' && connectUrl()} />
+                <div className={styles.connectHelper}>Use either a tunnel URL (https://...trycloudflare.com) or local URL (http://127.0.0.1:8080).</div>
+                <input className={styles.connectInput} placeholder="http://127.0.0.1:8080 or https://abc123.trycloudflare.com" value={inputUrl} onChange={e => { setInputUrl(e.target.value); if (error) setError(''); }} onKeyDown={e => e.key === 'Enter' && connectUrl()} />
                 {error && <div className={styles.connectError}>{error}</div>}
                 <button className={styles.connectBtn} onClick={connectUrl}>Connect</button>
               </div>
