@@ -108,18 +108,17 @@ function CodePanelInner(): React.ReactElement | null {
       <button className={styles.fab} onClick={togglePanel} aria-label={isOpen ? 'Close terminal' : 'Open terminal'}>
         {isOpen ? <X size={22} /> : <TerminalSquare size={22} />}
       </button>
-      {isOpen && (
-        <div
-          className={`${styles.drawer} ${layout === 'side' ? styles.drawerSide : styles.drawerUp}`}
-          style={{
-            ...(layout === 'up' ? { height: `${height}vh` } : { width: `${sideWidth}vw` }),
-            ['--tds-panel-opacity' as string]: String(panelOpacity / 100),
-          } as React.CSSProperties}
-        >
-          {layout === 'up' && (
+      <div
+        className={`${styles.drawer} ${layout === 'side' ? styles.drawerSide : styles.drawerUp} ${isOpen ? styles.drawerOpen : styles.drawerHidden}`}
+        style={{
+          ...(layout === 'up' ? { height: `${height}vh` } : { width: `${sideWidth}vw` }),
+          ['--tds-panel-opacity' as string]: String(panelOpacity / 100),
+        } as React.CSSProperties}
+      >
+          {isOpen && layout === 'up' && (
             <div className={styles.resizeHandle} onMouseDown={(e) => { dragMode.current = 'up'; startY.current = e.clientY; startH.current = height / 100; document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
           )}
-          {layout === 'side' && (
+          {isOpen && layout === 'side' && (
             <div className={styles.sideResizeHandle} onMouseDown={(e) => { dragMode.current = 'side'; startX.current = e.clientX; startW.current = sideWidth / 100; document.body.style.cursor = 'ew-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
           )}
           <div className={styles.header}>
@@ -180,7 +179,6 @@ function CodePanelInner(): React.ReactElement | null {
             </div>
           )}
         </div>
-      )}
     </>
   );
 }

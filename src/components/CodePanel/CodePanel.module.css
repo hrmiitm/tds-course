@@ -3,6 +3,12 @@
 .drawer { position: fixed; z-index: 290; display: flex; flex-direction: column; background: #1e1e1e; box-shadow: var(--tds-shadow-panel); overflow: hidden; opacity: var(--tds-panel-opacity, 0.92); }
 .drawerUp { bottom: 0; left: 0; right: 0; border-top: 1px solid #3d3d3d; }
 .drawerSide { top: 72px; right: 16px; bottom: 16px; min-width: 320px; max-width: 90vw; border: 1px solid #3d3d3d; border-radius: 12px; }
+.drawerOpen { pointer-events: auto; transform: translate3d(0, 0, 0); }
+.drawerHidden { pointer-events: none; }
+.drawerHidden.drawerUp { transform: translate3d(0, calc(100% + 12px), 0); }
+.drawerHidden.drawerSide { transform: translate3d(calc(100% + 12px), 0, 0); }
+.drawerUp,
+.drawerSide { transition: transform 0.2s ease; }
 .header { display: flex; align-items: center; padding: 0 16px; height: 44px; background: #2d2d2d; border-bottom: 1px solid #3d3d3d; flex-shrink: 0; gap: 10px; user-select: none; }
 .headerLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .headerTitle { font-size: 13px; font-weight: 600; color: #e8eaed; white-space: nowrap; }
