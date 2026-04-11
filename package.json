@@ -20,7 +20,7 @@
     "@mdx-js/react": "^3.0.0",
     "autoprefixer": "^10.4.27",
     "clsx": "^2.0.0",
-    "framer-motion": "^11.0.0",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.400.0",
     "postcss": "^8.5.9",
     "prism-react-renderer": "^2.3.0",
