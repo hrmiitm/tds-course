@@ -1,12 +1,12 @@
 .fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 14px; background: var(--ifm-color-primary); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 300; box-shadow: var(--tds-shadow-lg); transition: transform 0.15s ease; color: #fff; }
 .fab:hover { transform: scale(1.05); }
-.drawer { position: fixed; z-index: 290; display: flex; flex-direction: column; background: #1e1e1e; box-shadow: var(--tds-shadow-panel); overflow: hidden; opacity: var(--tds-panel-opacity, 0.92); }
-.drawerUp { bottom: 0; left: 0; right: 0; border-top: 1px solid #3d3d3d; }
-.drawerSide { top: 72px; right: 16px; bottom: 16px; min-width: 320px; max-width: 90vw; border: 1px solid #3d3d3d; border-radius: 12px; }
+.drawer { position: fixed; z-index: 290; display: flex; flex-direction: column; background: #1e1e1e; box-shadow: var(--tds-shadow-panel); overflow: hidden; opacity: var(--tds-panel-opacity, 0.92); border: 1px solid #3d3d3d; border-radius: 12px; }
+.drawerUp { }
+.drawerSide { }
 .drawerOpen { pointer-events: auto; transform: translate3d(0, 0, 0); }
-.drawerHidden { pointer-events: none; }
-.drawerHidden.drawerUp { transform: translate3d(0, calc(100% + 12px), 0); }
-.drawerHidden.drawerSide { transform: translate3d(calc(100% + 12px), 0, 0); }
+.drawerHidden { pointer-events: none; opacity: 0; visibility: hidden; }
+.drawerHidden.drawerUp { transform: translate3d(0, 12px, 0); }
+.drawerHidden.drawerSide { transform: translate3d(12px, 0, 0); }
 .drawerUp,
 .drawerSide { transition: transform 0.2s ease; }
 .header { display: flex; align-items: center; padding: 0 16px; height: 44px; background: #2d2d2d; border-bottom: 1px solid #3d3d3d; flex-shrink: 0; gap: 10px; user-select: none; }
@@ -22,10 +22,15 @@
 .layoutBtn { height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid #3d3d3d; background: rgba(255,255,255,0.04); color: #e8eaed; cursor: pointer; font-size: 12px; }
 .layoutBtn:hover { background: rgba(255,255,255,0.08); }
 .kbdBadge { font-size: 11px; font-family: var(--ifm-font-family-monospace); color: #5f6368; background: rgba(255,255,255,0.06); border: 1px solid #3d3d3d; border-radius: 4px; padding: 1px 6px; }
-.resizeHandle { height: 6px; background: #2d2d2d; cursor: ns-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.resizeHandle::before { content: ''; width: 32px; height: 3px; border-radius: 2px; background: #4a4a4a; }
-.sideResizeHandle { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 2; }
-.sideResizeHandle::after { content: ''; position: absolute; left: 2px; top: 50%; transform: translateY(-50%); width: 3px; height: 48px; border-radius: 2px; background: #4a4a4a; opacity: 0.8; }
+.resizeGrip { position: absolute; z-index: 5; }
+.resizeN { top: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+.resizeS { bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+.resizeE { top: 8px; right: -4px; bottom: 8px; width: 8px; cursor: ew-resize; }
+.resizeW { top: 8px; left: -4px; bottom: 8px; width: 8px; cursor: ew-resize; }
+.resizeNE { top: -4px; right: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
+.resizeNW { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
+.resizeSE { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
+.resizeSW { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
 .iframe { flex: 1; border: none; display: block; background: #1e1e1e; }
 .connectPane { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 20px; }
 .connectCard { width: 100%; max-width: 480px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 12px; padding: 24px; }
@@ -46,9 +51,8 @@
 .errorOverlay { flex: 1; display: flex; align-items: center; justify-content: center; color: #f28b82; font-size: 14px; gap: 8px; }
 @media (max-width: 768px) {
   .fab { width: 44px; height: 44px; bottom: 16px; right: 16px; border-radius: 12px; }
-  .drawerSide { top: 0; right: 0; bottom: 0; width: 100vw; border-radius: 0; border-left: none; border-right: none; }
+  .drawer { left: 0 !important; right: 0 !important; top: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; border-radius: 0; border-left: none; border-right: none; }
   .transparencyWrap { display: none; }
   .kbdBadge { display: none; }
-  .resizeHandle { display: none; }
-  .sideResizeHandle { display: none; }
+  .resizeGrip { display: none; }
 }

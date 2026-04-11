@@ -4,21 +4,28 @@ import { TerminalSquare, X, RotateCcw, ExternalLink, ChevronDown, ChevronUp } fr
 import styles from './CodePanel.module.css';
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error';
+type PanelRect = { x: number; y: number; w: number; h: number };
+type DragKind = 'none' | 'move' | 'resize';
+type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 const STORAGE_KEY = 'tds_tunnel_url';
 const LAYOUT_KEY = 'tds_terminal_layout';
-const SIDE_WIDTH_KEY = 'tds_terminal_side_width';
 const OPACITY_KEY = 'tds_terminal_opacity';
+const UP_RECT_KEY = 'tds_terminal_up_rect';
+const SIDE_RECT_KEY = 'tds_terminal_side_rect';
 const DEFAULT_LOCAL_URL = 'http://127.0.0.1:8080';
-const DEFAULT_HEIGHT = 60;
-const DEFAULT_SIDE_WIDTH = 56;
+const DEFAULT_UP_RECT: PanelRect = { x: 2, y: 32, w: 96, h: 66 };
+const DEFAULT_SIDE_RECT: PanelRect = { x: 38, y: 8, w: 60, h: 88 };
 const DEFAULT_OPACITY = 92;
+const MIN_W_PX = 360;
+const MIN_H_PX = 260;
+const SCREEN_PADDING_PX = 12;
 
 function CodePanelInner(): React.ReactElement | null {
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
   const [url, setUrl] = useState('');
-  const [height, setHeight] = useState(DEFAULT_HEIGHT);
-  const [sideWidth, setSideWidth] = useState(DEFAULT_SIDE_WIDTH);
+  const [upRect, setUpRect] = useState<PanelRect>(DEFAULT_UP_RECT);
+  const [sideRect, setSideRect] = useState<PanelRect>(DEFAULT_SIDE_RECT);
   const [panelOpacity, setPanelOpacity] = useState(DEFAULT_OPACITY);
   const [iframeKey, setIframeKey] = useState(0);
   const [inputUrl, setInputUrl] = useState('');
@@ -37,9 +44,18 @@ function CodePanelInner(): React.ReactElement | null {
     } catch {}
     try { const savedLayout = localStorage.getItem(LAYOUT_KEY); if (savedLayout === 'up' || savedLayout === 'side') setLayout(savedLayout); } catch {}
     try {
-      const savedSideWidth = localStorage.getItem(SIDE_WIDTH_KEY);
-      const parsed = savedSideWidth ? Number(savedSideWidth) : NaN;
-      if (!Number.isNaN(parsed)) setSideWidth(Math.min(85, Math.max(28, parsed)));
+      const savedUpRect = localStorage.getItem(UP_RECT_KEY);
+      if (savedUpRect) {
+        const parsed = JSON.parse(savedUpRect) as PanelRect;
+        if (parsed && Number.isFinite(parsed.x) && Number.isFinite(parsed.y) && Number.isFinite(parsed.w) && Number.isFinite(parsed.h)) setUpRect(parsed);
+      }
+    } catch {}
+    try {
+      const savedSideRect = localStorage.getItem(SIDE_RECT_KEY);
+      if (savedSideRect) {
+        const parsed = JSON.parse(savedSideRect) as PanelRect;
+        if (parsed && Number.isFinite(parsed.x) && Number.isFinite(parsed.y) && Number.isFinite(parsed.w) && Number.isFinite(parsed.h)) setSideRect(parsed);
+      }
     } catch {}
     try {
       const savedOpacity = localStorage.getItem(OPACITY_KEY);
@@ -53,8 +69,12 @@ function CodePanelInner(): React.ReactElement | null {
   }, [layout]);
 
   useEffect(() => {
-    try { localStorage.setItem(SIDE_WIDTH_KEY, String(sideWidth)); } catch {}
-  }, [sideWidth]);
+    try { localStorage.setItem(UP_RECT_KEY, JSON.stringify(upRect)); } catch {}
+  }, [upRect]);
+
+  useEffect(() => {
+    try { localStorage.setItem(SIDE_RECT_KEY, JSON.stringify(sideRect)); } catch {}
+  }, [sideRect]);
 
   useEffect(() => {
     try { localStorage.setItem(OPACITY_KEY, String(panelOpacity)); } catch {}
@@ -116,31 +136,102 @@ function CodePanelInner(): React.ReactElement | null {
     setError(''); handleConnect(t);
   };
 
-  const dragMode = React.useRef<'none' | 'up' | 'side'>('none');
-  const startY = React.useRef(0);
-  const startH = React.useRef(0);
-  const startX = React.useRef(0);
-  const startW = React.useRef(0);
-  const onResizeHeight = useCallback((nh: number) => setHeight(nh), []);
-  const onResizeWidth = useCallback((nw: number) => setSideWidth(nw), []);
+  const getActiveRect = useCallback(() => (layout === 'up' ? upRect : sideRect), [layout, upRect, sideRect]);
+  const setActiveRect = useCallback((next: PanelRect) => {
+    if (layout === 'up') setUpRect(next);
+    else setSideRect(next);
+  }, [layout]);
+
+  const dragKind = React.useRef<DragKind>('none');
+  const resizeDir = React.useRef<ResizeDir>('se');
+  const startMouse = React.useRef({ x: 0, y: 0 });
+  const startRect = React.useRef<PanelRect>(DEFAULT_UP_RECT);
+
+  const clampRect = useCallback((rectPx: { left: number; top: number; width: number; height: number }) => {
+    const ww = window.innerWidth;
+    const wh = window.innerHeight;
+    const pad = SCREEN_PADDING_PX;
+    let { left, top, width, height } = rectPx;
+
+    width = Math.max(MIN_W_PX, Math.min(width, ww - 2 * pad));
+    height = Math.max(MIN_H_PX, Math.min(height, wh - 2 * pad));
+
+    left = Math.min(Math.max(left, pad), ww - pad - width);
+    top = Math.min(Math.max(top, pad), wh - pad - height);
+
+    return {
+      x: (left / ww) * 100,
+      y: (top / wh) * 100,
+      w: (width / ww) * 100,
+      h: (height / wh) * 100,
+    };
+  }, []);
+
   useEffect(() => {
     const mm = (e: MouseEvent) => {
-      if (dragMode.current === 'none') return;
-      if (dragMode.current === 'up') {
-        const d = startY.current - e.clientY;
-        const n = (startH.current * window.innerHeight + d) / window.innerHeight * 100;
-        onResizeHeight(Math.min(85, Math.max(25, n)));
+      if (dragKind.current === 'none') return;
+
+      const ww = window.innerWidth;
+      const wh = window.innerHeight;
+      const dx = e.clientX - startMouse.current.x;
+      const dy = e.clientY - startMouse.current.y;
+
+      const startLeft = (startRect.current.x / 100) * ww;
+      const startTop = (startRect.current.y / 100) * wh;
+      const startWidth = (startRect.current.w / 100) * ww;
+      const startHeight = (startRect.current.h / 100) * wh;
+
+      if (dragKind.current === 'move') {
+        setActiveRect(clampRect({
+          left: startLeft + dx,
+          top: startTop + dy,
+          width: startWidth,
+          height: startHeight,
+        }));
         return;
       }
-      const d = startX.current - e.clientX;
-      const n = (startW.current * window.innerWidth + d) / window.innerWidth * 100;
-      onResizeWidth(Math.min(85, Math.max(28, n)));
+
+      let left = startLeft;
+      let top = startTop;
+      let width = startWidth;
+      let height = startHeight;
+      const dir = resizeDir.current;
+
+      if (dir.includes('e')) width = startWidth + dx;
+      if (dir.includes('s')) height = startHeight + dy;
+      if (dir.includes('w')) { left = startLeft + dx; width = startWidth - dx; }
+      if (dir.includes('n')) { top = startTop + dy; height = startHeight - dy; }
+
+      setActiveRect(clampRect({ left, top, width, height }));
     };
-    const mu = () => { dragMode.current = 'none'; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    const mu = () => { dragKind.current = 'none'; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
     document.addEventListener('mousemove', mm);
     document.addEventListener('mouseup', mu);
     return () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); };
-  }, [onResizeHeight, onResizeWidth]);
+  }, [clampRect, setActiveRect]);
+
+  const startMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input')) return;
+    dragKind.current = 'move';
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startRect.current = getActiveRect();
+    document.body.style.cursor = 'move';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }, [getActiveRect]);
+
+  const startResize = useCallback((dir: ResizeDir, e: React.MouseEvent<HTMLDivElement>) => {
+    dragKind.current = 'resize';
+    resizeDir.current = dir;
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startRect.current = getActiveRect();
+    document.body.style.cursor = dir === 'n' || dir === 's' ? 'ns-resize' : dir === 'e' || dir === 'w' ? 'ew-resize' : dir === 'ne' || dir === 'sw' ? 'nesw-resize' : 'nwse-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }, [getActiveRect]);
+
+  const activeRect = layout === 'up' ? upRect : sideRect;
 
   return (
     <>
@@ -150,17 +241,24 @@ function CodePanelInner(): React.ReactElement | null {
       <div
         className={`${styles.drawer} ${layout === 'side' ? styles.drawerSide : styles.drawerUp} ${isOpen ? styles.drawerOpen : styles.drawerHidden}`}
         style={{
-          ...(layout === 'up' ? { height: `${height}vh` } : { width: `${sideWidth}vw` }),
+          left: `${activeRect.x}vw`,
+          top: `${activeRect.y}vh`,
+          width: `${activeRect.w}vw`,
+          height: `${activeRect.h}vh`,
           ['--tds-panel-opacity' as string]: String(panelOpacity / 100),
         } as React.CSSProperties}
       >
-          {isOpen && layout === 'up' && (
-            <div className={styles.resizeHandle} onMouseDown={(e) => { dragMode.current = 'up'; startY.current = e.clientY; startH.current = height / 100; document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
-          )}
-          {isOpen && layout === 'side' && (
-            <div className={styles.sideResizeHandle} onMouseDown={(e) => { dragMode.current = 'side'; startX.current = e.clientX; startW.current = sideWidth / 100; document.body.style.cursor = 'ew-resize'; document.body.style.userSelect = 'none'; e.preventDefault(); }} />
-          )}
-          <div className={styles.header}>
+          {isOpen && <>
+            <div className={`${styles.resizeGrip} ${styles.resizeN}`} onMouseDown={(e) => startResize('n', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeS}`} onMouseDown={(e) => startResize('s', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeE}`} onMouseDown={(e) => startResize('e', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeW}`} onMouseDown={(e) => startResize('w', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeNE}`} onMouseDown={(e) => startResize('ne', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeNW}`} onMouseDown={(e) => startResize('nw', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeSE}`} onMouseDown={(e) => startResize('se', e)} />
+            <div className={`${styles.resizeGrip} ${styles.resizeSW}`} onMouseDown={(e) => startResize('sw', e)} />
+          </>}
+          <div className={styles.header} onMouseDown={isOpen ? startMove : undefined}>
             <div className={styles.headerLeft}>
               <span className={`tds-status-dot tds-status-dot--${status}`} />
               <span className={styles.headerTitle}>TDS Terminal</span>
