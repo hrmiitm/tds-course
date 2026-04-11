@@ -8,6 +8,7 @@ const STORAGE_KEY = 'tds_tunnel_url';
 const LAYOUT_KEY = 'tds_terminal_layout';
 const SIDE_WIDTH_KEY = 'tds_terminal_side_width';
 const OPACITY_KEY = 'tds_terminal_opacity';
+const DEFAULT_LOCAL_URL = 'http://127.0.0.1:8080';
 const DEFAULT_HEIGHT = 60;
 const DEFAULT_SIDE_WIDTH = 56;
 const DEFAULT_OPACITY = 92;
@@ -28,11 +29,11 @@ function CodePanelInner(): React.ReactElement | null {
   useEffect(() => {
     try {
       const s = localStorage.getItem(STORAGE_KEY);
-      if (s) {
-        setUrl(s);
-        setInputUrl(s);
-        setStatus('connecting');
-      }
+      const initialUrl = s || DEFAULT_LOCAL_URL;
+      setUrl(initialUrl);
+      setInputUrl(initialUrl);
+      setStatus('connecting');
+      if (!s) localStorage.setItem(STORAGE_KEY, initialUrl);
     } catch {}
     try { const savedLayout = localStorage.getItem(LAYOUT_KEY); if (savedLayout === 'up' || savedLayout === 'side') setLayout(savedLayout); } catch {}
     try {
@@ -62,6 +63,7 @@ function CodePanelInner(): React.ReactElement | null {
   const togglePanel = useCallback(() => setIsOpen(p => !p), []);
 
   const handleConnect = useCallback((newUrl: string) => {
+    setError('');
     setStatus('connecting'); setUrl(newUrl); setInputUrl(newUrl);
     try { localStorage.setItem(STORAGE_KEY, newUrl); } catch {}
   }, []);
@@ -70,6 +72,15 @@ function CodePanelInner(): React.ReactElement | null {
     setStatus('idle'); setUrl(''); setInputUrl(''); setIframeKey(k => k + 1);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }, []);
+
+  useEffect(() => {
+    if (status !== 'connecting') return;
+    const timeoutId = window.setTimeout(() => {
+      setStatus((current) => current === 'connecting' ? 'idle' : current);
+      setError((current) => current || `Auto-connect timed out after 5 seconds. Check if code-server is running at ${url || DEFAULT_LOCAL_URL}, or connect manually.`);
+    }, 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [status, url]);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.ctrlKey && e.key === '`') { e.preventDefault(); togglePanel(); } };
@@ -182,7 +193,7 @@ function CodePanelInner(): React.ReactElement | null {
             </div>
           </div>
           {(status === 'connecting' || status === 'connected') && url ? (
-            <iframe key={iframeKey} className={styles.iframe} src={url} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" allow="clipboard-read; clipboard-write" onLoad={() => setStatus('connected')} onError={() => setStatus('error')} title="Code Server" />
+            <iframe key={iframeKey} className={styles.iframe} src={url} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" allow="clipboard-read; clipboard-write" onLoad={() => { setError(''); setStatus('connected'); }} onError={() => { setStatus('idle'); setError('Connection failed. Verify URL and ensure code-server is running.'); }} title="Code Server" />
           ) : status === 'error' ? (
             <div className={styles.errorOverlay}>
               <X size={18} />
@@ -195,7 +206,7 @@ function CodePanelInner(): React.ReactElement | null {
             <div className={styles.connectPane}>
               <div className={styles.connectCard}>
                 <div className={styles.connectLabel}>Your code-server tunnel URL</div>
-                <div className={styles.connectHelper}>Use either a tunnel URL (https://...trycloudflare.com) or local URL (http://127.0.0.1:8080).</div>
+                <div className={styles.connectHelper}>Auto-connect default: http://127.0.0.1:8080. You can also use a tunnel URL (https://...trycloudflare.com).</div>
                 <input className={styles.connectInput} placeholder="http://127.0.0.1:8080 or https://abc123.trycloudflare.com" value={inputUrl} onChange={e => { setInputUrl(e.target.value); if (error) setError(''); }} onKeyDown={e => e.key === 'Enter' && connectUrl()} />
                 {error && <div className={styles.connectError}>{error}</div>}
                 <button className={styles.connectBtn} onClick={connectUrl}>Connect</button>
@@ -206,10 +217,12 @@ function CodePanelInner(): React.ReactElement | null {
                 </button>
                 {showGuide && (
                   <div className={styles.tunnelGuideSteps}>
-                    <strong>Step 1</strong> — Install cloudflared<br /><code className={styles.tunnelCode}>brew install cloudflared</code>
-                    <strong>Step 2</strong> — Start code-server<br /><code className={styles.tunnelCode}>code-server --auth none --bind-addr 127.0.0.1:8080</code>
-                    <strong>Step 3</strong> — Open tunnel<br /><code className={styles.tunnelCode}>cloudflared tunnel --url http://localhost:8080</code>
-                    <strong>Step 4</strong> — Copy the HTTPS URL and paste it above
+                    <strong>macOS install</strong><br /><code className={styles.tunnelCode}>brew install code-server</code>
+                    <strong>Linux install</strong><br /><code className={styles.tunnelCode}>curl -fsSL https://code-server.dev/install.sh | sh</code>
+                    <strong>Start code-server (local only)</strong><br /><code className={styles.tunnelCode}>code-server --auth none --bind-addr 127.0.0.1:8080</code>
+                    <strong>Connect directly in this panel</strong><br /><code className={styles.tunnelCode}>http://127.0.0.1:8080</code>
+                    <strong>Optional remote tunnel (Cloudflare)</strong><br /><code className={styles.tunnelCode}>cloudflared tunnel --url http://127.0.0.1:8080</code>
+                    <strong>Then connect with</strong><br /><code className={styles.tunnelCode}>https://&lt;random&gt;.trycloudflare.com</code>
                   </div>
                 )}
               </div>

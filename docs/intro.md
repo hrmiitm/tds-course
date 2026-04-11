@@ -26,6 +26,34 @@ Each chapter contains:
 This site has a built-in coding terminal. Press **Ctrl+`** (or click the terminal button in the
 bottom-right corner) to open a panel that embeds your local VS Code server.
 
+### Local code-server setup (macOS/Linux)
+Use the following steps if you want the terminal to connect to your local machine.
+
+1. Install `code-server`.
+	- macOS (Homebrew):
+	  ```bash
+	  brew install code-server
+	  ```
+	- Linux:
+	  ```bash
+	  curl -fsSL https://code-server.dev/install.sh | sh
+	  ```
+
+2. Start `code-server` on localhost.
+	```bash
+	code-server --auth none --bind-addr 127.0.0.1:8080
+	```
+
+3. Open the TDS terminal panel.
+	- It now auto-connects to `http://127.0.0.1:8080` by default.
+	- If auto-connect times out after 5 seconds, manual connect options appear.
+
+4. Optional: expose local server remotely using Cloudflare tunnel.
+	```bash
+	cloudflared tunnel --url http://127.0.0.1:8080
+	```
+	Paste the generated `https://...trycloudflare.com` URL into the terminal connect box.
+
 ## Prerequisites
 - A laptop running macOS, Linux, or WSL2 on Windows.
 - Python 3.11+ installed.
