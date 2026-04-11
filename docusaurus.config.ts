@@ -49,6 +49,11 @@ const config: Config = {
   themeConfig: {
     image: 'img/tds-social.png',
     colorMode: { defaultMode: 'light', disableSwitch: false, respectPrefersColorScheme: true },
+    docs: {
+      sidebar: {
+        hideable: true,
+      },
+    },
     navbar: {
       title: 'TDS Course',
       logo: { alt: 'TDS Logo', src: 'img/logo.svg' },
