@@ -81,7 +81,7 @@ function CodePanelInner(): React.ReactElement | null {
               <button className={styles.iconBtn} onClick={togglePanel} aria-label="Close"><X size={16} /></button>
             </div>
           </div>
-          {status === 'connected' && url ? (
+          {(status === 'connecting' || status === 'connected') && url ? (
             <iframe key={iframeKey} className={styles.iframe} src={url} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" allow="clipboard-read; clipboard-write" onLoad={() => setStatus('connected')} onError={() => setStatus('error')} title="Code Server" />
           ) : status === 'error' ? (
             <div className={styles.errorOverlay}><X size={18} /> Failed to connect. Check your tunnel URL.</div>
