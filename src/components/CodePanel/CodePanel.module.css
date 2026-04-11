@@ -1,0 +1,36 @@
+.fab { position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px; border-radius: 14px; background: var(--ifm-color-primary); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 300; box-shadow: var(--tds-shadow-lg); transition: transform 0.15s ease; color: #fff; }
+.fab:hover { transform: scale(1.05); }
+.drawer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 290; display: flex; flex-direction: column; background: #1e1e1e; border-top: 1px solid #3d3d3d; box-shadow: var(--tds-shadow-panel); overflow: hidden; }
+.header { display: flex; align-items: center; padding: 0 16px; height: 44px; background: #2d2d2d; border-bottom: 1px solid #3d3d3d; flex-shrink: 0; gap: 10px; user-select: none; }
+.headerLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.headerTitle { font-size: 13px; font-weight: 600; color: #e8eaed; white-space: nowrap; }
+.headerStatus { font-size: 12px; color: #9aa0a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.headerActions { display: flex; align-items: center; gap: 4px; }
+.iconBtn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: none; background: transparent; color: #9aa0a6; cursor: pointer; transition: background 0.12s, color 0.12s; }
+.iconBtn:hover { background: rgba(255,255,255,0.08); color: #e8eaed; }
+.kbdBadge { font-size: 11px; font-family: var(--ifm-font-family-monospace); color: #5f6368; background: rgba(255,255,255,0.06); border: 1px solid #3d3d3d; border-radius: 4px; padding: 1px 6px; }
+.resizeHandle { height: 6px; background: #2d2d2d; cursor: ns-resize; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.resizeHandle::before { content: ''; width: 32px; height: 3px; border-radius: 2px; background: #4a4a4a; }
+.iframe { flex: 1; border: none; display: block; background: #1e1e1e; }
+.connectPane { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 20px; }
+.connectCard { width: 100%; max-width: 480px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 12px; padding: 24px; }
+.connectLabel { font-size: 12px; font-weight: 600; color: #9aa0a6; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+.connectHelper { font-size: 12px; color: #6a6a6a; margin-bottom: 12px; line-height: 1.5; }
+.connectInput { width: 100%; background: #1e1e1e; border: 1px solid #3d3d3d; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: var(--ifm-font-family-monospace); color: #e8eaed; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
+.connectInput:focus { border-color: var(--ifm-color-primary); }
+.connectError { font-size: 12px; color: #f28b82; margin-top: 6px; }
+.connectBtn { width: 100%; margin-top: 14px; padding: 10px; background: var(--ifm-color-primary); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+.connectBtn:hover { background: var(--ifm-color-primary-dark); }
+.disconnectBtn { width: 100%; margin-top: 14px; padding: 10px; background: transparent; color: var(--tds-error); border: 1.5px solid var(--tds-error); border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.tunnelGuide { width: 100%; max-width: 480px; }
+.tunnelGuideToggle { font-size: 12px; color: #6a6a6a; cursor: pointer; display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; }
+.tunnelGuideSteps { margin-top: 10px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #9aa0a6; line-height: 1.7; }
+.tunnelCode { display: block; font-family: var(--ifm-font-family-monospace); background: #1e1e1e; border-radius: 4px; padding: 6px 10px; margin: 6px 0; color: #a8e6cf; font-size: 12px; }
+.connectedInfo { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.connectedPill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 999px; font-size: 12px; color: #e8eaed; font-family: var(--ifm-font-family-monospace); }
+.errorOverlay { flex: 1; display: flex; align-items: center; justify-content: center; color: #f28b82; font-size: 14px; gap: 8px; }
+@media (max-width: 768px) {
+  .fab { width: 44px; height: 44px; bottom: 16px; right: 16px; border-radius: 12px; }
+  .kbdBadge { display: none; }
+  .resizeHandle { display: none; }
+}
