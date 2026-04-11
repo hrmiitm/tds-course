@@ -6,7 +6,7 @@ const config: Config = {
   title: 'TDS Course',
   tagline: 'Tools in Data Science — IIT Madras',
   favicon: 'img/logo.svg',
-  url: 'https://your-github-username.github.io',
+  url: 'https://hrmiitm.github.io',
   baseUrl: '/tds-course/',
   organizationName: 'iit-madras',
   projectName: 'tds-course',
