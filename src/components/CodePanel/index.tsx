@@ -30,7 +30,7 @@ function CodePanelInner(): React.ReactElement | null {
   const [iframeKey, setIframeKey] = useState(0);
   const [inputUrl, setInputUrl] = useState('');
   const [error, setError] = useState('');
-  const [showGuide, setShowGuide] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const [layout, setLayout] = useState<'up' | 'side'>('up');
 
   useEffect(() => {
@@ -315,12 +315,45 @@ function CodePanelInner(): React.ReactElement | null {
                 </button>
                 {showGuide && (
                   <div className={styles.tunnelGuideSteps}>
-                    <strong>macOS install</strong><br /><code className={styles.tunnelCode}>brew install code-server</code>
-                    <strong>Linux install</strong><br /><code className={styles.tunnelCode}>curl -fsSL https://code-server.dev/install.sh | sh</code>
-                    <strong>Start code-server (local only)</strong><br /><code className={styles.tunnelCode}>code-server --auth none --bind-addr 127.0.0.1:8080</code>
-                    <strong>Connect directly in this panel</strong><br /><code className={styles.tunnelCode}>http://127.0.0.1:8080</code>
-                    <strong>Optional remote tunnel (Cloudflare)</strong><br /><code className={styles.tunnelCode}>cloudflared tunnel --url http://127.0.0.1:8080</code>
-                    <strong>Then connect with</strong><br /><code className={styles.tunnelCode}>https://&lt;random&gt;.trycloudflare.com</code>
+                    <div className={styles.osGuideScroller}>
+                      <div className={styles.osGuideGrid}>
+                        <div className={styles.osGuideCard}>
+                          <div className={styles.osGuideTitle}>Windows</div>
+                          <span className={styles.guideLabel}>Install code-server</span>
+                          <code className={styles.tunnelCode}>winget install --id Coder.code-server -e</code>
+                          <span className={styles.guideLabel}>Install cloudflared</span>
+                          <code className={styles.tunnelCode}>winget install --id Cloudflare.cloudflared -e</code>
+                          <span className={styles.guideLabel}>Auto-start code-server</span>
+                          <code className={styles.tunnelCode}>schtasks /Create /SC ONLOGON /TN "code-server" /TR "code-server --auth none --bind-addr 127.0.0.1:8080" /F</code>
+                        </div>
+                        <div className={styles.osGuideCard}>
+                          <div className={styles.osGuideTitle}>macOS</div>
+                          <span className={styles.guideLabel}>Install code-server</span>
+                          <code className={styles.tunnelCode}>brew install code-server</code>
+                          <span className={styles.guideLabel}>Install cloudflared</span>
+                          <code className={styles.tunnelCode}>brew install cloudflared</code>
+                          <span className={styles.guideLabel}>Auto-start code-server</span>
+                          <code className={styles.tunnelCode}>brew services start code-server</code>
+                        </div>
+                        <div className={styles.osGuideCard}>
+                          <div className={styles.osGuideTitle}>Linux</div>
+                          <span className={styles.guideLabel}>Install code-server</span>
+                          <code className={styles.tunnelCode}>curl -fsSL https://code-server.dev/install.sh | sh</code>
+                          <span className={styles.guideLabel}>Install cloudflared</span>
+                          <code className={styles.tunnelCode}>sudo apt install cloudflared</code>
+                          <span className={styles.guideLabel}>Auto-start code-server</span>
+                          <code className={styles.tunnelCode}>systemctl --user enable --now code-server</code>
+                        </div>
+                      </div>
+                    </div>
+                    <span className={styles.guideSectionTitle}>Start code-server (local only)</span>
+                    <code className={styles.tunnelCode}>code-server --auth none --bind-addr 127.0.0.1:8080</code>
+                    <span className={styles.guideSectionTitle}>Connect directly in this panel</span>
+                    <code className={styles.tunnelCode}>http://127.0.0.1:8080</code>
+                    <span className={styles.guideSectionTitle}>Optional remote tunnel (Cloudflare)</span>
+                    <code className={styles.tunnelCode}>cloudflared tunnel --url http://127.0.0.1:8080</code>
+                    <span className={styles.guideSectionTitle}>Then connect with</span>
+                    <code className={styles.tunnelCode}>https://&lt;random&gt;.trycloudflare.com</code>
                   </div>
                 )}
               </div>

@@ -33,7 +33,7 @@
 .resizeSW { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
 .iframe { flex: 1; border: none; display: block; background: #1e1e1e; }
 .connectPane { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 20px; }
-.connectCard { width: 100%; max-width: 480px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 12px; padding: 24px; }
+.connectCard { width: 100%; max-width: 980px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 12px; padding: 24px; }
 .connectLabel { font-size: 12px; font-weight: 600; color: #9aa0a6; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
 .connectHelper { font-size: 12px; color: #6a6a6a; margin-bottom: 12px; line-height: 1.5; }
 .connectInput { width: 100%; background: #1e1e1e; border: 1px solid #3d3d3d; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: var(--ifm-font-family-monospace); color: #e8eaed; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
@@ -42,17 +42,29 @@
 .connectBtn { width: 100%; margin-top: 14px; padding: 10px; background: var(--ifm-color-primary); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
 .connectBtn:hover { background: var(--ifm-color-primary-dark); }
 .disconnectBtn { width: 100%; margin-top: 14px; padding: 10px; background: transparent; color: var(--tds-error); border: 1.5px solid var(--tds-error); border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
-.tunnelGuide { width: 100%; max-width: 480px; }
+.tunnelGuide { width: 100%; max-width: 980px; }
 .tunnelGuideToggle { font-size: 12px; color: #6a6a6a; cursor: pointer; display: flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; }
 .tunnelGuideSteps { margin-top: 10px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 8px; padding: 14px 16px; font-size: 12px; color: #9aa0a6; line-height: 1.7; }
-.tunnelCode { display: block; font-family: var(--ifm-font-family-monospace); background: #1e1e1e; border-radius: 4px; padding: 6px 10px; margin: 6px 0; color: #a8e6cf; font-size: 12px; }
+.osGuideScroller { overflow-x: auto; margin-bottom: 8px; }
+.osGuideGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.osGuideCard { background: #252525; border: 1px solid #3d3d3d; border-radius: 8px; padding: 10px; }
+.osGuideTitle { font-size: 12px; font-weight: 600; color: #cfd3d7; margin-bottom: 4px; }
+.guideLabel { display: block; font-size: 11px; color: #9aa0a6; margin-top: 6px; margin-bottom: 2px; }
+.guideSectionTitle { display: block; font-size: 12px; font-weight: 600; color: #cfd3d7; margin-top: 10px; margin-bottom: 2px; }
+.tunnelCode { display: block; font-family: var(--ifm-font-family-monospace); background: #1e1e1e; border-radius: 4px; padding: 6px 10px; margin: 4px 0; color: #a8e6cf; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .connectedInfo { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .connectedPill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: #2d2d2d; border: 1px solid #3d3d3d; border-radius: 999px; font-size: 12px; color: #e8eaed; font-family: var(--ifm-font-family-monospace); }
 .errorOverlay { flex: 1; display: flex; align-items: center; justify-content: center; color: #f28b82; font-size: 14px; gap: 8px; }
+
+@media (max-width: 980px) {
+  .osGuideGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 768px) {
   .fab { width: 44px; height: 44px; bottom: 16px; right: 16px; border-radius: 12px; }
   .drawer { left: 0 !important; right: 0 !important; top: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; border-radius: 0; border-left: none; border-right: none; }
   .transparencyWrap { display: none; }
   .kbdBadge { display: none; }
   .resizeGrip { display: none; }
+  .osGuideGrid { grid-template-columns: 1fr; }
 }
