@@ -26,7 +26,14 @@ function CodePanelInner(): React.ReactElement | null {
   const [layout, setLayout] = useState<'up' | 'side'>('up');
 
   useEffect(() => {
-    try { const s = localStorage.getItem(STORAGE_KEY); if (s) setUrl(s); } catch {}
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) {
+        setUrl(s);
+        setInputUrl(s);
+        setStatus('connecting');
+      }
+    } catch {}
     try { const savedLayout = localStorage.getItem(LAYOUT_KEY); if (savedLayout === 'up' || savedLayout === 'side') setLayout(savedLayout); } catch {}
     try {
       const savedSideWidth = localStorage.getItem(SIDE_WIDTH_KEY);
@@ -55,12 +62,12 @@ function CodePanelInner(): React.ReactElement | null {
   const togglePanel = useCallback(() => setIsOpen(p => !p), []);
 
   const handleConnect = useCallback((newUrl: string) => {
-    setStatus('connecting'); setUrl(newUrl);
+    setStatus('connecting'); setUrl(newUrl); setInputUrl(newUrl);
     try { localStorage.setItem(STORAGE_KEY, newUrl); } catch {}
   }, []);
 
   const handleDisconnect = useCallback(() => {
-    setStatus('idle'); setUrl(''); setIframeKey(k => k + 1);
+    setStatus('idle'); setUrl(''); setInputUrl(''); setIframeKey(k => k + 1);
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }, []);
 
@@ -142,6 +149,9 @@ function CodePanelInner(): React.ReactElement | null {
                 />
               </div>
               <button className={styles.layoutBtn} onClick={() => setLayout(v => v === 'up' ? 'side' : 'up')} aria-label="Toggle panel layout">{layout === 'up' ? 'Side' : 'Up'}</button>
+              {(status === 'connecting' || status === 'connected') && url && (
+                <button className={styles.layoutBtn} onClick={handleDisconnect} aria-label="Disconnect terminal session">Disconnect</button>
+              )}
               {status === 'connected' && (<>
                 <button className={styles.iconBtn} onClick={() => setIframeKey(k => k + 1)} aria-label="Refresh"><RotateCcw size={16} /></button>
                 <button className={styles.iconBtn} onClick={() => url && window.open(url, '_blank')} aria-label="New tab"><ExternalLink size={16} /></button>
@@ -153,7 +163,10 @@ function CodePanelInner(): React.ReactElement | null {
           {(status === 'connecting' || status === 'connected') && url ? (
             <iframe key={iframeKey} className={styles.iframe} src={url} sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" allow="clipboard-read; clipboard-write" onLoad={() => setStatus('connected')} onError={() => setStatus('error')} title="Code Server" />
           ) : status === 'error' ? (
-            <div className={styles.errorOverlay}><X size={18} /> Failed to connect. Check your tunnel URL.</div>
+            <div className={styles.errorOverlay}>
+              <X size={18} /> Failed to connect. Check your tunnel URL.
+              <button className={styles.layoutBtn} onClick={handleDisconnect}>Reset Session</button>
+            </div>
           ) : (
             <div className={styles.connectPane}>
               <div className={styles.connectCard}>
