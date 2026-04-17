@@ -1,84 +1,102 @@
-# TDS Course — Tools in Data Science
+# TDS Course (Docusaurus)
 
-A comprehensive course documentation site for **Tools in Data Science** at IIT Madras, built with [Docusaurus 3](https://docusaurus.io/).
+Documentation site for the **Tools in Data Science (TDS)** course.
+Built with **Docusaurus 3 + TypeScript + Tailwind**.
 
-## Quick Start
+## What’s inside
 
-### Prerequisites
+- Course docs + labs (MD/MDX) with local search
+- Modern MDX authoring: **Mermaid**, **GFM tables/task-lists**, responsive **video embeds**
+- Modern code blocks: Mac-style header + word-wrap toggle + auto-collapse for long snippets
+- In-doc **Terminal panel** (iframe-based) for:
+  - `localhost` code-server
+  - GitHub Codespaces forwarded port URL
+  - Any custom `http(s)://` URL
+  - Saved connection profiles (stored in browser **IndexedDB**)
 
-- Node.js 18+
-- npm 9+
+## Requirements
 
-### Install
+- **Node.js 24 LTS** (see `.nvmrc`)
+- npm (no Bun)
+
+## Local development
 
 ```bash
+nvm use 24
 npm install
+npm start
 ```
 
-### Local Development
+## Quality gates
 
 ```bash
-npm run start
+npm run lint   # TypeScript typecheck (tsc --noEmit)
+npm run build  # Docusaurus production build (outputs ./build)
+npm run serve  # Preview the production build
 ```
 
-Opens a dev server at `http://localhost:3000`. Most changes are reflected live without restarting.
+Note: Docusaurus is invoked via `node --require ./webpack-fix.js ...` in `package.json` to stay stable on Node 24.
 
-### Build
+## Authoring (MDX)
 
-```bash
-npm run build
+### Mermaid
+
+````md
+```mermaid
+graph TD
+  A[Docs] --> B[Build]
+```
+````
+
+### Video embeds
+
+```mdx
+<YouTube id="dQw4w9WgXcQ" title="Lecture: Prompt Caching" />
+
+<Video src="/videos/week-3/prompt-caching.mp4" title="Demo" />
 ```
 
-Generates static content into the `build/` directory.
+## Terminal panel UX
 
-### Deployment
+- Open via the **Terminal** icon in the navbar or **Ctrl+`**
+- (Linux) Install code-server once:
+  ```bash
+  curl -fsSL https://code-server.dev/install.sh | sh
+  ```
+- Start code-server locally:
+  ```bash
+  code-server --auth none --bind-addr 127.0.0.1:8080
+  ```
+- In the Terminal panel: **Localhost → Port 8080 → Connect**
+- Dock modes: **Bottom / Right / Float**
+- Transparency slider + Disconnect button
+- “Saved sessions” are stored locally in your browser (IndexedDB)
 
-The site deploys automatically to GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`.
+## Deploy
 
-## Project Structure
+This repo supports **both** GitHub Pages and Cloudflare Pages using env-driven `url/baseUrl`:
+- `SITE_URL` (e.g. `https://ORG.github.io`)
+- `BASE_URL` (e.g. `/tds-course/` on GitHub Pages, `/` on Cloudflare)
 
-```
-tds-course/
-├── docs/                   # Course content (Markdown)
-│   ├── intro.md            # Introduction
-│   ├── chapter-1/          # MLOps Foundations
-│   ├── chapter-2/          # DevOps Tooling
-│   ├── chapter-3/          # Cloud Platforms
-│   ├── labs/               # Graded lab exercises
-│   └── reference/          # Tools glossary & cheatsheet
-├── src/
-│   ├── components/         # React components
-│   │   ├── CodePanel/      # VS Code terminal drawer
-│   │   ├── HomepageHero/   # Landing page hero
-│   │   ├── FeatureCard/    # Feature showcase cards
-│   │   ├── LabCard/        # Lab exercise cards
-│   │   ├── CourseProgress/ # Progress tracking bar
-│   │   └── MarkComplete/   # Mark-as-complete button
-│   ├── pages/              # Custom pages
-│   ├── theme/              # Docusaurus theme swizzle
-│   └── css/custom.css      # Global styles & CSS variables
-├── static/img/             # Static assets
-├── docusaurus.config.ts    # Docusaurus configuration
-├── sidebars.ts             # Sidebar navigation
-└── tailwind.config.js      # Tailwind CSS configuration
-```
+### GitHub Pages
 
-## Features
+Workflow: `.github/workflows/deploy.yml`
+- Uses **Node 24**
+- Builds with:
+  - `SITE_URL=https://<owner>.github.io`
+  - `BASE_URL=/<repo-name>/`
 
-- **Built-in code terminal** — Connect your local code-server via cloudflared tunnel (Ctrl+`)
-- **Course progress tracking** — localStorage-based completion tracking
-- **Dark mode** — Full dark theme support with automatic system preference detection
-- **Full-text search** — Powered by Docusaurus search
-- **Responsive design** — Works on desktop, tablet, and mobile
+Enable GitHub Pages in repo settings → **Source: GitHub Actions**.
 
-## Tech Stack
+### Cloudflare Pages
 
-- [Docusaurus 3.7](https://docusaurus.io/) — Static site generator
-- [React 19](https://react.dev/) — UI components
-- [Tailwind CSS 3.4](https://tailwindcss.com/) — Utility-first CSS
-- [Lucide React](https://lucide.dev/) — Icon library
-- [TypeScript](https://www.typescriptlang.org/) — Type safety
+Workflow: `.github/workflows/deploy-cloudflare-pages.yml`
+- Requires GitHub repo secrets:
+  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_ACCOUNT_ID`
+  - (optional) `CLOUDFLARE_SITE_URL` (defaults to `https://tds-course.pages.dev`)
+- Ensure the workflow `projectName:` matches your Cloudflare Pages project.
 
 ## License
 
-Content is licensed under CC BY 4.0. © IIT Madras Online Degree Programme.
+Content: CC BY 4.0 · Code: MIT

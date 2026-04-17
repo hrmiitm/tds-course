@@ -1,62 +1,222 @@
 import React from 'react';
-import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
-import { ArrowRight, BookOpenCheck, TerminalSquare, Code } from 'lucide-react';
-import HomepageHero from '@site/src/components/HomepageHero';
-import FeatureCard from '@site/src/components/FeatureCard';
-import CourseProgress from '@site/src/components/CourseProgress';
-import LabCard from '@site/src/components/LabCard';
+import Layout from '@theme/Layout';
+import { TerminalSquare, BookOpen, ArrowRight, Code2, GitBranch, FlaskConical, Moon, Cloud, Brain, Bot, Shield } from 'lucide-react';
+import styles from './index.module.css';
 
 const FEATURES = [
-  { icon: 'BookOpen', title: 'Structured Curriculum', description: 'Three chapters covering MLOps foundations, DevOps tooling, and cloud platforms.' },
-  { icon: 'TerminalSquare', title: 'Live Coding Environment', description: 'Connect your local code-server in one step and code without leaving the docs.' },
-  { icon: 'FlaskConical', title: 'Hands-On Labs', description: 'Three graded labs on real cloud infrastructure within the GCP free tier.' },
-  { icon: 'GitBranch', title: 'Modern Toolchain', description: 'Git, Docker, Kubernetes, Cloud Run, BigQuery ML — the tools companies use.' },
-  { icon: 'Search', title: 'Full-Text Search', description: 'Find any concept, command, or code snippet instantly across all pages.' },
-  { icon: 'Moon', title: 'Dark Mode', description: 'Comfortable late-night reading with a fully polished dark theme.' },
+  {
+    icon: BookOpen,
+    title: 'Structured Curriculum',
+    description: '10 weeks covering development tools, LLMs, RAG, agentic AI, vision, finetuning, and MLOps — designed for working engineers.',
+  },
+  {
+    icon: TerminalSquare,
+    title: 'Live Coding Environment',
+    description: 'Connect your local code-server in one step and write, run, and debug real code without leaving the docs.',
+  },
+  {
+    icon: FlaskConical,
+    title: 'Hands-On Labs',
+    description: '8 graded labs on real cloud infrastructure within the GCP free tier — no credit card surprises.',
+  },
+  {
+    icon: GitBranch,
+    title: 'Modern Toolchain',
+    description: 'Git, Docker, FastAPI, Cloud Run, BigQuery ML, Pydantic AI, MCP — the tools companies actually use.',
+  },
+  {
+    icon: Brain,
+    title: 'AI-Powered Learning',
+    description: 'Built-in AI chatbot to answer questions, explain concepts, and guide you through exercises in real-time.',
+  },
+  {
+    icon: Moon,
+    title: 'Dark Mode',
+    description: 'Comfortable late-night reading with a fully polished dark theme that extends into the coding terminal.',
+  },
 ];
-const STATS = [{ label: 'Chapters', value: '3' }, { label: 'Lab exercises', value: '3' }, { label: 'Tools covered', value: '12+' }, { label: 'Students enrolled', value: '2,400+' }];
 
-export default function HomePage(): React.ReactElement {
+const STATS = [
+  { label: 'Weeks', value: '10' },
+  { label: 'Lab exercises', value: '8' },
+  { label: 'Tools covered', value: '50+' },
+  { label: 'Students enrolled', value: '2,400+' },
+];
+
+const FLOATING_ICONS = [
+  { icon: Code2, top: '12%', left: '8%', size: 48, animation: 'float1', delay: '0s' },
+  { icon: Cloud, top: '18%', right: '10%', size: 40, animation: 'float2', delay: '1s' },
+  { icon: GitBranch, bottom: '22%', left: '12%', size: 36, animation: 'float3', delay: '2s' },
+  { icon: Bot, bottom: '15%', right: '8%', size: 44, animation: 'float1', delay: '0.5s' },
+  { icon: Brain, top: '35%', left: '5%', size: 32, animation: 'float2', delay: '1.5s' },
+  { icon: Shield, top: '30%', right: '5%', size: 36, animation: 'float3', delay: '2.5s' },
+];
+
+function HomepageHero() {
   return (
-    <Layout title="TDS Course" description="Tools in Data Science — IIT Madras">
+    <section className={styles.heroSection}>
+      {FLOATING_ICONS.map((item, idx) => {
+        const Icon = item.icon;
+        const style: Record<string, string> = {
+          position: 'absolute',
+          opacity: '0.08',
+          color: '#ffffff',
+          animation: `${item.animation} 4s ease-in-out infinite`,
+          animationDelay: item.delay,
+          ...('top' in item && { top: item.top }),
+          ...('bottom' in item && { bottom: item.bottom }),
+          ...('left' in item && { left: item.left }),
+          ...('right' in item && { right: item.right }),
+        };
+        return <Icon key={idx} size={item.size} style={style} />;
+      })}
+      <h1 className={styles.heroHeadline}>
+        Master the Tools of<br />Modern Data Science
+      </h1>
+      <p className={styles.heroSubheadline}>
+        A hands-on course from IIT Madras covering development tools, LLMs, RAG, agentic AI,
+        computer vision, finetuning, and cloud deployment — with a live coding environment built right in.
+      </p>
+      <div className={styles.heroButtons}>
+        <Link className={styles.heroBtnPrimary} to="/intro">
+          Start Learning <ArrowRight size={18} />
+        </Link>
+        <button
+          className={styles.heroBtnOutline}
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('tds:toggle-terminal'));
+            }
+          }}
+        >
+          <TerminalSquare size={18} /> Open Terminal
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function StatsStrip() {
+  return (
+    <section className={styles.statsSection}>
+      <div className={styles.statsGrid}>
+        {STATS.map((stat, idx) => (
+          <div key={idx} className={styles.statCard}>
+            <div className={styles.statValue}>{stat.value}</div>
+            <div className={styles.statLabel}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FeatureCard({ icon: Icon, title, description }: { icon: React.ComponentType<{ size?: number }>; title: string; description: string }) {
+  return (
+    <div className="tds-card" style={{ padding: '28px' }}>
+      <div style={{
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        background: 'rgba(26,115,232,0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+        color: 'var(--ifm-color-primary)',
+      }}>
+        <Icon size={22} />
+      </div>
+      <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 8, color: 'var(--tds-text-primary)' }}>
+        {title}
+      </h3>
+      <p style={{ fontSize: 14, color: 'var(--tds-text-secondary)', lineHeight: 1.6, margin: 0 }}>
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function FeaturesSection() {
+  return (
+    <section className={styles.featuresSection}>
+      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tds-text-primary)' }}>
+          Everything you need to learn
+        </h2>
+        <p style={{ fontSize: 16, color: 'var(--tds-text-secondary)', maxWidth: 500, margin: '0 auto' }}>
+          From data science fundamentals to cutting-edge agentic systems
+        </p>
+      </div>
+      <div className={styles.featuresGrid}>
+        {FEATURES.map((feature, idx) => (
+          <FeatureCard key={idx} {...feature} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HowItWorksSection() {
+  const steps = [
+    { number: 1, title: 'Read the docs', description: 'Follow structured chapters at your own pace — from dev tools to MLOps.' },
+    { number: 2, title: 'Open the terminal', description: 'Connect your local code-server with one URL paste. Code alongside the docs.' },
+    { number: 3, title: 'Build and deploy', description: 'Complete labs on real cloud infrastructure. Ship to production on GCP.' },
+  ];
+
+  return (
+    <section className={styles.howItWorksSection}>
+      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--tds-text-primary)' }}>
+          How it works
+        </h2>
+        <p style={{ fontSize: 16, color: 'var(--tds-text-secondary)' }}>
+          Three steps to go from zero to production
+        </p>
+      </div>
+      <div className={styles.stepsGrid}>
+        {steps.map((step) => (
+          <div key={step.number} className={styles.stepCard}>
+            <div className={styles.stepNumber}>{step.number}</div>
+            <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 8, color: 'var(--tds-text-primary)' }}>
+              {step.title}
+            </h3>
+            <p style={{ fontSize: 14, color: 'var(--tds-text-secondary)', lineHeight: 1.6 }}>
+              {step.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CTASection() {
+  return (
+    <section className={styles.ctaSection}>
+      <h2 className={styles.ctaHeadline}>Ready to start?</h2>
+      <p className={styles.ctaSubtext}>
+        Join thousands of students mastering the tools of modern data science.
+      </p>
+      <Link className={styles.heroBtnPrimary} to="/intro">
+        Get Started <ArrowRight size={18} />
+      </Link>
+    </section>
+  );
+}
+
+export default function Home(): React.JSX.Element {
+  return (
+    <Layout
+      title="TDS Course — Tools in Data Science"
+      description="Learn modern data science tools: from development environments to LLMs, RAG, agentic AI, and cloud deployment. A hands-on course from IIT Madras."
+    >
       <HomepageHero />
-      <section style={{ padding: '48px 24px', background: 'var(--tds-surface)' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-          {STATS.map(s => <div key={s.label} style={{ textAlign: 'center', padding: '20px 12px' }}><div style={{ fontSize: 32, fontWeight: 700, color: 'var(--ifm-color-primary)', marginBottom: 6 }}>{s.value}</div><div style={{ fontSize: 13, color: 'var(--tds-text-secondary)', fontWeight: 500 }}>{s.label}</div></div>)}
-        </div>
-      </section>
-      <section style={{ padding: '64px 24px', background: 'var(--tds-surface-secondary)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}><h2 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 10px' }}>Everything you need to learn</h2><p style={{ fontSize: 16, color: 'var(--tds-text-secondary)', maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>From data science fundamentals to production cloud deployments.</p></div>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>{FEATURES.map(f => <FeatureCard key={f.title} {...f} />)}</div>
-      </section>
-      <section style={{ padding: '64px 24px', background: 'var(--tds-surface)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}><h2 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 10px' }}>How it works</h2></div>
-        <div style={{ maxWidth: 800, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-          {[{ n: 1, Icon: BookOpenCheck, t: 'Read the docs', d: 'Follow structured chapters at your own pace.' }, { n: 2, Icon: TerminalSquare, t: 'Open the terminal', d: 'Connect your local code-server with one URL paste.' }, { n: 3, Icon: Code, t: 'Build and deploy', d: 'Complete labs on real cloud infrastructure.' }].map(s => (
-            <div key={s.n} style={{ textAlign: 'center', padding: '24px 16px' }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--ifm-color-primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, marginBottom: 16 }}>{s.n}</div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 12, background: 'rgba(26,115,232,0.08)', color: 'var(--ifm-color-primary)', marginBottom: 12 }}><s.Icon size={24} /></div>
-              <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 6px' }}>{s.t}</h3>
-              <p style={{ fontSize: 14, color: 'var(--tds-text-secondary)', margin: 0, lineHeight: 1.5 }}>{s.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section style={{ padding: '48px 24px', background: 'var(--tds-surface-secondary)' }}><div style={{ maxWidth: 960, margin: '0 auto' }}><CourseProgress /></div></section>
-      <section style={{ padding: '64px 24px', background: 'var(--tds-surface)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}><h2 style={{ fontSize: 28, fontWeight: 700, margin: '0 0 10px' }}>Hands-on Labs</h2></div>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-          <LabCard labNumber={1} title="Build a Data Pipeline" description="Design a reproducible data pipeline using Python, pandas, and GCS." duration="~2 hours" difficulty="Beginner" tags={["Python", "GCS", "pandas"]} href="/labs/lab-01-data-pipeline" />
-          <LabCard labNumber={2} title="Containerise and Serve" description="Package as FastAPI in Docker and deploy to Cloud Run." duration="~3 hours" difficulty="Intermediate" tags={["Docker", "FastAPI", "Cloud Run"]} href="/labs/lab-02-containerisation" />
-          <LabCard labNumber={3} title="End-to-End Cloud Deploy" description="Cloud Function → BigQuery ML → Cloud Run → Monitoring." duration="~4 hours" difficulty="Advanced" tags={["BigQuery ML", "Cloud Functions"]} href="/labs/lab-03-cloud-deploy" />
-        </div>
-      </section>
-      <section style={{ padding: '64px 24px', background: 'var(--tds-hero-gradient)', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>Ready to start?</h2>
-        <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.6 }}>Begin your journey through MLOps, DevOps, and Cloud Platforms.</p>
-        <Link to="/intro" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#fff', color: '#114d99', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>Get Started <ArrowRight size={18} /></Link>
-      </section>
+      <StatsStrip />
+      <FeaturesSection />
+      <HowItWorksSection />
+      <CTASection />
     </Layout>
   );
 }

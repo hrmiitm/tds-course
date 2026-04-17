@@ -1,0 +1,102 @@
+---
+title: "Lab 6: AI Agent + MCP"
+description: Build an autonomous research agent with MCP server integration.
+sidebar_position: 6
+---
+
+# Lab 6: AI Agent + MCP
+
+**Difficulty:** Advanced · **Estimated time:** ~5 hours
+
+## Objective
+
+1. Build a Pydantic AI research agent
+2. Create an MCP server with tools (web search, URL reader, SQLite storage)
+3. Implement autonomous research loop
+4. Generate structured reports
+5. Deploy MCP server for VS Code integration
+
+## Step 1 — Create MCP server with FastMCP
+
+```python
+from mcp.server.fastmcp import FastMCP
+import sqlite3
+import httpx
+
+mcp = FastMCP("TDS Research Agent")
+
+@mcp.tool()
+async def web_search(query: str) -> str:
+    """Search the web for information."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.tavily.com/search",
+            params={"query": query, "api_key": TAVILY_KEY}
+        )
+    results = response.json().get("results", [])
+    return "\n".join(f"- {r['title']}: {r['url']}" for r in results[:5])
+
+@mcp.tool()
+async def read_url(url: str) -> str:
+    """Read content from a URL."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+    return response.text[:5000]
+
+@mcp.tool()
+def save_finding(topic: str, finding: str, source: str) -> str:
+    """Save a research finding to the database."""
+    conn = sqlite3.connect("research.db")
+    conn.execute("INSERT INTO findings (topic, finding, source) VALUES (?,?,?)",
+                 (topic, finding, source))
+    conn.commit()
+    conn.close()
+    return "Saved!"
+
+@mcp.tool()
+def get_findings(topic: str) -> str:
+    """Retrieve all findings for a topic."""
+    conn = sqlite3.connect("research.db")
+    rows = conn.execute("SELECT finding, source FROM findings WHERE topic=?",
+                       (topic,)).fetchall()
+    conn.close()
+    return "\n".join(f"- {f} (source: {s})" for f, s in rows)
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+## Step 2 — Build Pydantic AI agent
+
+```python
+from pydantic_ai import Agent
+
+research_agent = Agent(
+    "openai:gpt-4",
+    system_prompt="""You are a research assistant. Use tools to:
+    1. Search the web for information
+    2. Read URLs for details
+    3. Save important findings
+    4. Synthesize a report when done"""
+)
+
+result = await research_agent.run("Research the latest advances in RAG evaluation")
+print(result.data)
+```
+
+## Submission
+
+GitHub repo with: MCP server, agent code, database schema, Dockerfile
+
+## Grading rubric
+
+| Criterion | Points |
+|-----------|--------|
+| MCP server runs and exposes tools | 25 |
+| Agent autonomously searches and reads | 25 |
+| Findings stored in SQLite | 15 |
+| Report generation works | 20 |
+| MCP accessible from VS Code | 15 |
+| **Total** | **100** |
+
+

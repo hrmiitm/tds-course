@@ -1,0 +1,82 @@
+---
+title: LangGraph
+description: Build stateful, reliable multi-agent workflows with graphs instead of spaghetti chains.
+sidebar_position: 6
+---
+
+# LangGraph
+
+LangGraph is a graph-based orchestration framework for building **stateful** LLM applications. The key idea is to replace “prompt spaghetti” with a **state machine** you can debug, test, replay, and evolve.
+
+## Learning goals
+
+- Model an agent as a graph of nodes (steps) with explicit transitions
+- Add guard conditions + retries without fragile prompt hacks
+- Make runs reproducible (state snapshots)
+
+## The mental model
+
+A LangGraph app is:
+
+- a **State** object (your single source of truth)
+- a set of **Nodes** (pure-ish functions that read/write state)
+- **Edges** (transitions) that decide what runs next
+
+```text
+[User Input]
+   ↓
+[Planner] → [Tool Call] → [Synthesis]
+   ↘︎                ↘︎
+    └──────[Retry/Repair]───┘
+```
+
+## Why graphs beat chains
+
+- **Branching**: handle “if tool fails, retry with fallback” cleanly
+- **Observability**: log node-by-node decisions
+- **Human in the loop**: insert approvals / checkpoints
+- **Testing**: unit test nodes without a live model
+
+## Minimal pseudo-code
+
+```python
+# Pseudo-code (conceptual)
+
+class State(dict):
+    # keys: question, plan, tool_results, answer, errors
+    ...
+
+def planner(state: State) -> State:
+    state["plan"] = "..."
+    return state
+
+def tool_node(state: State) -> State:
+    state["tool_results"] = {"search": "..."}
+    return state
+
+def synthesizer(state: State) -> State:
+    state["answer"] = "..."
+    return state
+
+# graph.add_node("planner", planner)
+# graph.add_edge("planner", "tool")
+# graph.add_edge("tool", "synth")
+```
+
+## Practical patterns to copy
+
+- **Router node**: decides which tool to call next based on state.
+- **Repair loop**: if structured output validation fails, branch to a repair node.
+- **Budget node**: stops the run when tokens/steps exceed a threshold.
+
+## Mini-lab (optional)
+
+Build a “research agent graph”:
+
+- planner → web search tool → read tool → synthesize
+- add a retry branch if citations are missing
+- log every node output to a JSONL file
+
+## Where this fits
+
+LangGraph is the orchestration layer. Your tools can be local function calls, or exposed via [MCP Server](./mcp-server).

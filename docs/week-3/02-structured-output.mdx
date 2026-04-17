@@ -1,0 +1,198 @@
+---
+title: Structured Output
+description: Get reliable JSON from LLMs using JSON mode, Pydantic, and the instructor library
+sidebar_position: 2
+---
+
+# Structured Output
+
+Raw LLM outputs are free-form text. For building applications, you need **structured data** — JSON objects with predictable fields and types. This guide covers three approaches to getting structured output from LLMs, from simple to robust.
+
+## The Problem
+
+Without structure enforcement, LLMs are unreliable:
+
+```python
+# You ask for JSON...
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "List 3 programming languages as JSON"}
+    ]
+)
+
+# But you might get:
+# "Here are 3 programming languages:\n```json\n[\"Python\", \"JavaScript\", \"Rust\"]\n```"
+# Or: '{"languages": ["Python", "JavaScript", "Rust"]}'
+# Or: '["Python", "JavaScript", "Rust"]'  ← only this one parses cleanly
+```
+
+## Approach 1: JSON Mode
+
+Most LLM providers offer a JSON mode that guarantees valid JSON output:
+
+```python
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_format={"type": "json_object"},
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a data extraction assistant. Always respond with valid JSON."
+        },
+        {
+            "role": "user",
+            "content": """Extract the following from this product review:
+- product_name
+- rating (1-5)
+- pros (list of strings)
+- cons (list of strings)
+- summary (one sentence)
+
+Review: "The Sony WH-1000XM5 headphones have incredible noise cancellation and comfort for long sessions. However, the price is steep at $349 and the case is bulky. Sound quality is excellent though. 4/5 stars."
+"""
+        }
+    ]
+)
+
+data = json.loads(response.choices[0].message.content)
+print(json.dumps(data, indent=2))
+```
+
+:::warning JSON mode guarantees syntax, not schema
+`response_format={"type": "json_object"}` ensures the output is valid JSON, but it does NOT guarantee the keys or types you asked for. The model might return `{"review": "good"}` instead of `{"product_name": "...", "rating": 4}`.
+:::
+
+## Approach 2: Pydantic + LLM
+
+Define your schema with Pydantic and validate the LLM output:
+
+```python
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from openai import OpenAI
+import json
+
+class ProductReview(BaseModel):
+    product_name: str = Field(description="Name of the product reviewed")
+    rating: int = Field(ge=1, le=5, description="Rating from 1 to 5")
+    pros: List[str] = Field(description="List of positive aspects")
+    cons: List[str] = Field(description="List of negative aspects")
+    summary: str = Field(description="One-sentence summary of the review")
+
+# Build the prompt from the schema
+schema_prompt = f"""Extract a product review and return a JSON object matching this schema:
+{json.dumps(ProductReview.model_json_schema(), indent=2)}
+
+Return ONLY the JSON object, no other text."""
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_format={"type": "json_object"},
+    messages=[
+        {"role": "system", "content": schema_prompt},
+        {"role": "user", "content": "Review: The Sony WH-1000XM5..."}
+    ]
+)
+
+# Parse and validate
+raw = json.loads(response.choices[0].message.content)
+review = ProductReview.model_validate(raw)
+print(review.product_name)  # "Sony WH-1000XM5"
+print(review.rating)        # 4
+```
+
+## Approach 3: Instructor Library
+
+[Instructor](https://python-instructor.com/) is a library that patches the OpenAI client to guarantee structured output with automatic retries:
+
+```bash
+uv add instructor
+```
+
+```python
+import instructor
+from pydantic import BaseModel, Field
+from typing import List
+from openai import OpenAI
+
+# Patch the client
+client = instructor.from_openai(OpenAI())
+
+class ProductReview(BaseModel):
+    product_name: str
+    rating: int = Field(ge=1, le=5)
+    pros: List[str]
+    cons: List[str]
+    summary: str
+
+# Type-safe response — automatically validated and retried
+review = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_model=ProductReview,
+    max_retries=3,
+    messages=[
+        {
+            "role": "user",
+            "content": """Review: "The Sony WH-1000XM5 headphones have incredible
+noise cancellation and comfort. However, the price is steep at $349.
+Sound quality is excellent. 4/5 stars.""""
+        }
+    ],
+)
+
+# review is a validated ProductReview object
+print(f"Product: {review.product_name}")
+print(f"Rating: {review.rating}/5")
+print(f"Pros: {', '.join(review.pros)}")
+print(f"Cons: {', '.join(review.cons)}")
+```
+
+:::tip Why instructor is the best approach
+1. **Automatic retries** — If the LLM output doesn't match the schema, instructor re-prompts with the error message
+2. **Type safety** — You get a Pydantic model, not a raw dict
+3. **Nested models** — Supports complex, nested schemas out of the box
+4. **Works with any provider** — Supports OpenAI, Anthropic, Gemini, Ollama, and more
+:::
+
+## Nested Models
+
+```python
+from pydantic import BaseModel
+from typing import List, Optional
+import instructor
+from openai import OpenAI
+
+client = instructor.from_openai(OpenAI())
+
+class Address(BaseModel):
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+class Company(BaseModel):
+    name: str
+    industry: str
+    headquarters: Address
+    employee_count: Optional[int] = None
+
+class ArticleExtraction(BaseModel):
+    companies_mentioned: List[Company]
+    publication_date: Optional[str] = None
+    sentiment: str
+
+result = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_model=ArticleExtraction,
+    messages=[{"role": "user", "content": "Extract companies from: ..."}],
+)
+```
+
+
+

@@ -1,0 +1,105 @@
+---
+title: "Lab 2: RAG ChatBot"
+description: Build a full RAG pipeline with PDF processing, vector search, and RAGAS evaluation.
+sidebar_position: 2
+---
+
+# Lab 2: RAG ChatBot
+
+**Difficulty:** Intermediate · **Estimated time:** ~4 hours
+
+## Objective
+
+Build a complete RAG pipeline:
+1. Upload and parse PDF documents
+2. Chunk text with recursive character splitting
+3. Embed chunks into Chroma vector database
+4. Retrieve with hybrid search (dense + BM25)
+5. Re-rank results with a cross-encoder
+6. Generate answers with citations
+7. Evaluate with RAGAS
+
+## Step 1 — PDF processing
+
+```python
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+def load_and_chunk(pdf_path: str, chunk_size: int = 500, overlap: int = 50):
+    loader = PyPDFLoader(pdf_path)
+    docs = loader.load()
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=overlap,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
+    return splitter.split_documents(docs)
+```
+
+## Step 2 — Embed and store in Chroma
+
+```python
+import chromadb
+from chromadb.utils import embedding_functions
+
+client = chromadb.PersistentClient(path="./chroma_db")
+embed_fn = embedding_functions.OpenAIEmbeddingFunction(
+    model_name="text-embedding-3-small"
+)
+collection = client.get_or_create_collection("tds_docs", embedding_function=embed_fn)
+
+def index_documents(chunks):
+    for i, chunk in enumerate(chunks):
+        collection.add(
+            documents=[chunk.page_content],
+            metadatas=[{"source": chunk.metadata.get("source", "unknown"), "page": i}],
+            ids=[f"chunk_{i}"]
+        )
+```
+
+## Step 3 — Hybrid retrieval
+
+```python
+from rank_bm25 import BM25Okapi
+import numpy as np
+
+def hybrid_search(query: str, top_k: int = 5):
+    # Dense retrieval from Chroma
+    dense_results = collection.query(query_texts=[query], n_results=top_k)
+    # Combine with BM25 sparse retrieval
+    # ... implement fusion scoring
+    return dense_results
+```
+
+## Step 4 — Generate with citations
+
+```python
+def generate_answer(query: str, context_docs: list[str]) -> str:
+    context = "\n\n".join(f"[{i+1}] {doc}" for i, doc in enumerate(context_docs))
+    prompt = f"""Answer the question based on the context below. Cite sources.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer with citations:"""
+    return call_llm(prompt)
+```
+
+## Submission
+
+GitHub repo with: `pipeline.py`, `rag_service.py`, `requirements.txt`, `Dockerfile`, `README.md`
+
+## Grading rubric
+
+| Criterion | Points |
+|-----------|--------|
+| PDF processing and chunking works | 20 |
+| Chroma vector store with embeddings | 20 |
+| Hybrid search retrieves relevant chunks | 20 |
+| Generated answers include citations | 20 |
+| RAGAS evaluation score > 0.6 | 20 |
+| **Total** | **100** |
+
+

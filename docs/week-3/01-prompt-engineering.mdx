@@ -1,0 +1,170 @@
+---
+title: Prompt Engineering
+description: Master zero-shot, few-shot, chain-of-thought, and role prompting techniques
+sidebar_position: 1
+---
+
+# Prompt Engineering
+
+Prompt engineering is the art and science of crafting inputs to LLMs to get the best possible outputs. While LLMs are powerful, their output quality depends heavily on how you phrase your prompt. This guide covers the essential techniques.
+
+## Zero-Shot Prompting
+
+Zero-shot means asking the model directly without any examples:
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "user", "content": "Classify this review as positive or negative: 'The food was amazing but service was slow.'"}
+    ]
+)
+print(response.choices[0].message.content)
+# Output: "Mixed (Positive about food, Negative about service)"
+```
+
+Zero-shot works well for simple tasks but may not follow your desired format.
+
+## Few-Shot Prompting
+
+Provide examples to show the model the exact format and behavior you want:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a sentiment classifier. Respond with exactly one word."},
+        {"role": "user", "content": "Review: This movie was fantastic!"},
+        {"role": "assistant", "content": "Positive"},
+        {"role": "user", "content": "Review: Terrible experience, would not recommend."},
+        {"role": "assistant", "content": "Negative"},
+        {"role": "user", "content": "Review: The food was amazing but service was slow."},
+    ]
+)
+print(response.choices[0].message.content)
+# Output: "Mixed"
+```
+
+:::tip Choose examples carefully
+Your examples should:
+1. Cover the diversity of inputs you expect (edge cases, ambiguous cases)
+2. Demonstrate the exact output format you want
+3. Be consistent — conflicting examples confuse the model
+4. Include 3-5 examples typically; more is not always better
+:::
+
+## Chain-of-Thought (CoT)
+
+Ask the model to reason step-by-step before giving its answer. This dramatically improves performance on reasoning tasks:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": """You are a data analyst. Always show your reasoning step by step before giving a final answer.
+
+Format your response as:
+Reasoning: <your step-by-step thinking>
+Answer: <your final answer>"""},
+        {"role": "user", "content": """
+A store sold 150 items on Monday, 200 on Tuesday, and 180 on Wednesday.
+On Thursday, they sold 50% more than Monday.
+On Friday, they sold 20% less than Tuesday.
+What was the total sales for the week?
+"""}
+    ]
+)
+print(response.choices[0].message.content)
+```
+
+You can also trigger CoT by simply adding "Let's think step by step." to your prompt.
+
+### Zero-Shot CoT
+
+```python
+# Just add this phrase to any prompt
+prompt = """Is the following statement true or false?
+
+"The square root of 144 is 12."
+
+Let's think step by step."""
+```
+
+## Role Prompting
+
+Assign the model a specific role to shape its expertise and communication style:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {
+            "role": "system",
+            "content": """You are a senior data engineer at a Fortune 500 company.
+You write production-grade Python code with:
+- Type hints on all functions
+- Comprehensive error handling
+- Docstrings in Google style
+- Unit test suggestions at the end
+
+Always explain your design decisions briefly."""
+        },
+        {
+            "role": "user",
+            "content": "Write a function to validate and clean a CSV file before loading into a database."
+        }
+    ]
+)
+```
+
+:::warning Role specificity matters
+"You are a helpful assistant" is too vague. "You are a senior data engineer with 10 years of experience building ETL pipelines" is specific and produces better results. The more context you give the model about its role, the better it performs.
+:::
+
+## System Prompts Best Practices
+
+The system prompt is your most powerful tool for controlling LLM behavior:
+
+```python
+SYSTEM_PROMPT = """You are a data extraction assistant for a research lab.
+
+## Your Task
+Extract structured information from scientific abstracts.
+
+## Output Format
+Return a JSON object with these fields:
+- title: string
+- authors: list of strings
+- methods: list of method names mentioned
+- key_findings: list of strings (max 3)
+- confidence: float between 0 and 1
+
+## Rules
+1. If information is not clearly stated, use null
+2. Do not infer or fabricate information
+3. Keep findings concise (one sentence each)
+4. Set confidence based on how clearly the information is stated"""
+```
+
+## Combining Techniques
+
+The best prompts combine multiple techniques:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},  # Role + format rules
+        {"role": "user", "content": "Here is an example abstract:\n...\n"},
+        {"role": "assistant", "content": '{"title": "...", ...}'},  # Few-shot example
+        {"role": "user", "content": f"Extract from this abstract:\n{abstract}\n\nThink step by step."},  # CoT
+    ]
+)
+```
+
+
+

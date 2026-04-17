@@ -1,0 +1,218 @@
+---
+title: Git & GitHub
+description: Master version control with Git — branching, PRs, merge conflicts, .gitignore, and git bisect
+sidebar_position: 4
+---
+
+# Git & GitHub
+
+Git is the de facto version control system for software development. GitHub adds collaboration features like pull requests, code review, and CI/CD on top of Git. This guide covers the workflows you will use throughout the course and in your career.
+
+## Initial Setup
+
+```bash
+# Configure your identity (do this once per machine)
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+
+# Set default branch name
+git config --global init.defaultBranch main
+
+# Configure line ending settings (cross-platform teams)
+git config --global core.autocrlf input   # Linux/macOS
+git config --global core.autocrlf true    # Windows
+
+# Verify your configuration
+git config --list --show-origin | head -20
+```
+
+## Branching Strategies
+
+Branches let you work on features in isolation without affecting the main codebase.
+
+```bash
+# Create and switch to a new branch
+git checkout -b feature/data-pipeline
+
+# Or using the newer switch command
+git switch -c feature/data-pipeline
+
+# List all branches
+git branch -a
+
+# Switch back to main
+git switch main
+
+# Merge a feature branch into main
+git switch main
+git merge feature/data-pipeline
+
+# Delete a merged branch
+git branch -d feature/data-pipeline
+```
+
+### Branch Naming Conventions
+
+Use consistent prefixes to communicate intent:
+
+| Prefix | Purpose | Example |
+|--------|---------|---------|
+| `feature/` | New functionality | `feature/user-auth` |
+| `bugfix/` | Bug fixes | `bugfix/null-pointer` |
+| `hotfix/` | Urgent production fixes | `hotfix/data-leak` |
+| `experiment/` | Exploratory work | `experiment/new-model` |
+| `chore/` | Maintenance tasks | `chore/update-deps` |
+
+:::tip Keep branches short-lived
+Long-lived branches diverge from main and become painful to merge. Aim to merge within 1-2 days. If a feature is large, break it into smaller pieces that can be merged incrementally.
+:::
+
+## Pull Requests
+
+Pull Requests (PRs) are GitHub's mechanism for code review and discussion before merging changes:
+
+```bash
+# Push your branch to GitHub
+git push -u origin feature/data-pipeline
+
+# Then open a PR on GitHub's web interface
+# Or use the GitHub CLI:
+gh pr create \
+  --title "Add data pipeline for ETL" \
+  --body "## Changes
+- Added extract, transform, load modules
+- Added unit tests for each stage
+- Updated README with setup instructions
+
+## Testing
+- [x] Unit tests pass
+- [x] Integration test with sample data
+- [x] No breaking changes to existing API"
+```
+
+### PR Best Practices
+
+1. **Small, focused PRs** — Each PR should address one concern
+2. **Descriptive titles** — "Add data validation to ETL pipeline" not "fix stuff"
+3. **Self-review first** — Review your own diff before requesting others
+4. **Respond to all comments** — Even if just "Done" or "Good catch"
+
+## Merge Conflicts
+
+Conflicts occur when two branches modify the same lines in the same file:
+
+```bash
+# Attempt to merge — conflict detected
+git merge feature/data-pipeline
+# CONFLICT (content): Merge conflict in src/pipeline.py
+
+# Open the conflicted file and look for conflict markers:
+# <<<<<<< HEAD
+# current branch content
+# =======
+# incoming branch content
+# >>>>>>> feature/data-pipeline
+
+# After resolving conflicts manually, stage and commit
+git add src/pipeline.py
+git commit -m "Resolve merge conflict in pipeline.py"
+
+# Or use a merge tool for complex conflicts
+git mergetool
+```
+
+:::warning Prevent conflicts with frequent integration
+The best way to handle merge conflicts is to avoid them. Rebase your branch on main frequently:
+```bash
+git switch feature/data-pipeline
+git fetch origin
+git rebase origin/main
+```
+:::
+
+## .gitignore
+
+A well-crafted `.gitignore` prevents committing generated files, secrets, and environment artifacts:
+
+```gitignore
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Data files (usually too large for Git)
+*.csv
+*.parquet
+*.sqlite
+data/raw/
+
+# Environment and secrets
+.env
+.env.local
+credentials.json
+service-account-key.json
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# uv
+# Note: uv.lock should NOT be ignored
+.venv/
+```
+
+## git bisect — Finding Bugs
+
+`git bisect` uses binary search to find the commit that introduced a bug:
+
+```bash
+# Start the bisect process
+git bisect start
+
+# Mark the current (bad) commit
+git bisect bad
+
+# Mark a known good commit (e.g., from 2 weeks ago)
+git bisect good v1.2.0
+
+# Git checks out the middle commit
+# Run your tests to see if the bug exists
+python -m pytest tests/
+
+# If the bug exists:
+git bisect bad
+
+# If the bug does NOT exist:
+git bisect good
+
+# Repeat until git identifies the offending commit
+# Git will print: "<hash> is the first bad commit"
+
+# When done, reset to your original branch
+git bisect reset
+```
+
+You can even automate the entire process:
+
+```bash
+# Automatically bisect using a test script
+git bisect start HEAD v1.2.0 --
+git bisect run python -m pytest tests/test_pipeline.py
+```
+
+:::info git bisect is underused
+Most developers manually check out commits one by one when debugging. `git bisect` can find the culprit in O(log n) steps instead of O(n). For a history of 1000 commits, it takes at most 10 steps.
+:::
+
+
+

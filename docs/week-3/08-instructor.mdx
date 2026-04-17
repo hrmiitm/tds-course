@@ -1,0 +1,135 @@
+---
+title: Structured Output with instructor
+description: Enforce schemas reliably with the instructor library for 10× more dependable JSON.
+sidebar_position: 8
+---
+
+# Structured Output with `instructor`
+
+`instructor` is the “schema-first” way to use LLMs: you define a **Pydantic model**, and you get back a **validated Python object**. If validation fails, `instructor` automatically retries by feeding the model the error and asking it to fix the output.
+
+## Learning goals
+
+By the end of this page you should be able to:
+
+- Design extraction schemas that are *easy for models to satisfy* and *easy for code to trust*
+- Add **validation loops** (retry-on-error) instead of hand-written JSON parsing hacks
+- Turn messy text into typed data structures reliably
+
+## Setup
+
+```bash
+uv add instructor pydantic
+# or
+pip install instructor pydantic
+```
+
+## The core pattern
+
+1) Define a response model.
+
+```python
+from pydantic import BaseModel, Field
+
+class Ticket(BaseModel):
+    title: str
+    priority: str = Field(description="low|medium|high")
+    summary: str
+```
+
+2) Patch your LLM client and request a typed response.
+
+```python
+import instructor
+from openai import OpenAI
+
+client = instructor.from_openai(OpenAI())
+
+ticket = client.chat.completions.create(
+    model="gpt-4o-mini",
+    response_model=Ticket,
+    max_retries=3,
+    messages=[
+        {
+            "role": "user",
+            "content": "Turn this email into a support ticket: 'Wifi drops every 5 minutes in lab 3.'",
+        }
+    ],
+)
+
+assert isinstance(ticket, Ticket)
+print(ticket.priority)
+```
+
+:::tip Why this works so well
+Instead of hoping your JSON parses, you **treat schema validation errors as feedback**. That’s the missing engineering loop for LLM reliability.
+:::
+
+## Schema design rules that actually work
+
+- Prefer **enums / constrained values** over free text.
+- Use **short fields** and **clear names**.
+- If a field is optional in reality, make it `Optional[...]`.
+- Add constraints only when they’re meaningful (e.g., `ge=0`, `le=5`).
+
+Example with constraints:
+
+```python
+from typing import Literal, Optional
+from pydantic import BaseModel, Field
+
+class Review(BaseModel):
+    product: str
+    rating: int = Field(ge=1, le=5)
+    sentiment: Literal["positive", "neutral", "negative"]
+    price_usd: Optional[float] = Field(default=None, ge=0)
+```
+
+## A practical extraction recipe (copy/paste)
+
+Use this 3-step loop when you want robust extraction:
+
+1. **Normalize input** (strip signatures / headers where possible)
+2. **Extract** with `response_model=...`
+3. **Validate in tests** with real-ish samples
+
+```python
+from pydantic import BaseModel
+import instructor
+from openai import OpenAI
+
+client = instructor.from_openai(OpenAI())
+
+class CompanyMention(BaseModel):
+    name: str
+    role: str  # e.g., supplier, customer, competitor
+
+class Extraction(BaseModel):
+    companies: list[CompanyMention]
+
+def extract_companies(text: str) -> Extraction:
+    return client.chat.completions.create(
+        model="gpt-4o-mini",
+        response_model=Extraction,
+        max_retries=3,
+        messages=[{"role": "user", "content": f"Extract company mentions:\n\n{text}"}],
+    )
+```
+
+## Common failure modes (and fixes)
+
+- **Over-constrained schemas** → loosen constraints; add `Optional`.
+- **Ambiguous fields** → rename (`id` → `invoice_id`), add `Field(description=...)`.
+- **Long inputs** → chunk first, then merge multiple validated outputs.
+
+## Mini-lab (optional)
+
+Build a “receipt extractor”:
+
+- Input: raw OCR text from a receipt
+- Output schema: `merchant`, `date`, `total`, `items[]`
+- Acceptance: your code validates **20 receipts** without manual fixes
+
+## Where this fits
+
+Start with [Structured Output](./structured-output) for the landscape (JSON mode vs schema validation). Then use `instructor` when you need production-grade reliability.

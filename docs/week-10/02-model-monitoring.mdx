@@ -1,0 +1,267 @@
+---
+title: Model Monitoring
+description: Set up Vertex AI Model Monitoring to detect feature drift, prediction skew, and feature attribution changes in production ML models with alerting.
+sidebar_position: 2
+---
+
+# Model Monitoring
+
+Models degrade in production. Data distributions shift, user behavior changes, and upstream data pipelines break silently. **Model monitoring** catches these problems before they impact business outcomes. Vertex AI Model Monitoring provides automated drift detection, skew detection, and feature attribution monitoring — all without writing custom monitoring code.
+
+## Why Monitor Models?
+
+```
+Training Data (Jan)          Production Data (Jul)
+┌─────────────────┐          ┌─────────────────┐
+│  Mean age: 35    │    →     │  Mean age: 42    │  ← Drift!
+│  Feature X: 0.7  │    →     │  Feature X: 0.3  │  ← Drift!
+│  Label dist: 60/40│   →     │  Label dist: 80/20│  ← Skew!
+└─────────────────┘          └─────────────────┘
+     Model trained on          Model serving to
+     this distribution         THIS distribution
+```
+
+Without monitoring, you discover problems weeks later when business metrics drop. With monitoring, you detect and fix issues in hours.
+
+## 1. Enable Model Monitoring
+
+```bash
+# Set variables
+export PROJECT_ID="your-project-id"
+export REGION="us-central1"
+export ENDPOINT_ID="1234567890123456789"
+export MODEL_NAME="credit-scoring-v1"
+
+# Create a model monitoring job
+gcloud ai model-monitoring-jobs create \
+  --project=${PROJECT_ID} \
+  --region=${REGION} \
+  --endpoint=${ENDPOINT_ID} \
+  --display-name="${MODEL_NAME}-monitor" \
+  --schedule="0 * * * *" \
+  --monitoring-interval=3600 \
+  --target-field="label"
+```
+
+## 2. Drift Detection (Feature Distribution)
+
+Drift detection compares the distribution of incoming production features against a **baseline** (typically the training data). It uses statistical tests to determine if the distributions differ significantly.
+
+### Configuring drift thresholds
+
+```python
+from google.cloud import aiplatform
+from google.cloud.aiplatform import model_monitoring
+
+aiplatform.init(project="your-project-id", location="us-central1")
+
+# Define drift thresholds per feature
+drift_config = model_monitoring.DriftDetectionConfig(
+    drift_thresholds={
+        "age": 0.05,            # Jensen-Shannon divergence threshold
+        "income": 0.03,
+        "credit_score": 0.04,
+        "loan_amount": 0.05,
+        "employment_years": 0.03,
+    },
+    default_drift_threshold=0.05,  # For features not explicitly listed
+)
+
+# Create the monitoring job with drift detection
+job = model_monitoring.ModelMonitoringJob(
+    display_name="credit-scoring-drift-monitor",
+    endpoint="projects/your-project/locations/us-central1/endpoints/123456789",
+    drift_detection_config=drift_config,
+    schedule="0 * * * *",  # Every hour
+    logging_sampling_rate=1.0,  # Log 100% of predictions (reduce in production)
+)
+
+job.run()
+```
+
+### How drift is measured
+
+| Statistical Test | Use Case |
+|-----------------|----------|
+| **Jensen-Shannon Divergence** | Continuous features (default) |
+| **Chi-Squared Test** | Categorical features |
+| **Wasserstein Distance** | Ordinal features |
+
+A threshold of `0.05` for JSD means: if the divergence between training and production distributions exceeds 0.05, fire an alert.
+
+## 3. Skew Detection
+
+Skew detection compares **serving-time** feature distributions against the **training-time** distributions. Unlike drift (which compares against a moving baseline), skew always compares against the original training data.
+
+```python
+skew_config = model_monitoring.SkewDetectionConfig(
+    skew_thresholds={
+        "age": 0.05,
+        "income": 0.03,
+        "credit_score": 0.04,
+    },
+    default_skew_threshold=0.05,
+    data_source="bq://your-project.ml_monitoring.training_baseline",
+)
+
+# Combined monitoring: skew + drift
+job = model_monitoring.ModelMonitoringJob(
+    display_name="credit-scoring-full-monitor",
+    endpoint="projects/your-project/locations/us-central1/endpoints/123456789",
+    skew_detection_config=skew_config,
+    drift_detection_config=drift_config,
+    schedule="0 */2 * * *",  # Every 2 hours
+)
+
+job.run()
+```
+
+### Drift vs. Skew
+
+| Aspect | Skew Detection | Drift Detection |
+|--------|---------------|-----------------|
+| **Baseline** | Original training data | Previous monitoring window |
+| **Detects** | Training-serving mismatch | Gradual distribution change |
+| **When to use** | First days after deployment | Ongoing production monitoring |
+| **Speed** | Immediate detection | Detects trends over time |
+
+## 4. Feature Attribution Monitoring
+
+Feature attribution monitoring tracks how much each feature contributes to predictions. If the importance of features changes dramatically, it signals that the model's decision logic has shifted.
+
+```python
+attribution_config = model_monitoring.ExplainabilityConfig(
+    explanation_baseline="bq://your-project.ml_monitoring.explanation_baseline",
+    attribution_score_threshold=0.01,
+    monitored_features=["age", "income", "credit_score", "loan_amount"],
+)
+
+job = model_monitoring.ModelMonitoringJob(
+    display_name="credit-scoring-attribution-monitor",
+    endpoint="projects/your-project/locations/us-central1/endpoints/123456789",
+    drift_detection_config=drift_config,
+    explainability_config=attribution_config,
+    schedule="0 * * * *",
+)
+
+job.run()
+```
+
+:::tip Why Track Attributions?
+If "credit_score" was the most important feature at training time but "income" becomes more important in production, it means the model's decision boundary has shifted — even if accuracy hasn't changed yet. Attribution monitoring catches this early.
+:::
+
+## 5. Alert Policies and Notifications
+
+Connect monitoring alerts to your notification channels (email, Slack, PagerDuty):
+
+```bash
+# Create a notification channel (email)
+gcloud alpha monitoring channels create \
+  --display-name="ML Team Alerts" \
+  --type=email \
+  --channel-labels=email_address=ml-team@company.com
+
+# List notification channels
+gcloud alpha monitoring channels list --format="table(name,displayName)"
+
+# Create an alert policy for model drift
+gcloud alpha monitoring policies create \
+  --display-name="Model Drift Alert" \
+  --condition-display-name="Feature drift exceeded threshold" \
+  --condition-filter='resource.type="aiplatform.googleapis.com/ModelMonitoringJob"
+    AND metric.type="aiplatform.googleapis.com/model_monitoring/drift"' \
+  --condition-threshold-value=0.05 \
+  --condition-threshold-comparison=COMPARISON_GT \
+  --notification-channels=projects/your-project/notificationChannels/CHANNEL_ID \
+  --combiner=OR
+```
+
+### Programmatic alert setup
+
+```python
+from google.cloud import monitoring_v3
+from google.protobuf import duration_pb2
+
+client = monitoring_v3.AlertPolicyServiceClient()
+project_name = f"projects/your-project-id"
+
+policy = monitoring_v3.AlertPolicy(
+    display_name="ML Model Drift Alert",
+    conditions=[
+        monitoring_v3.AlertPolicy.Condition(
+            display_name="Drift threshold exceeded",
+            condition_threshold=monitoring_v3.AlertPolicy.Condition.MetricThreshold(
+                filter='resource.type="aiplatform.googleapis.com/ModelMonitoringJob"',
+                comparison=monitoring_v3.ComparisonType.COMPARISON_GT,
+                threshold_value=0.05,
+                duration=duration_pb2.Duration(seconds=300),
+                aggregations=[
+                    monitoring_v3.Aggregation(
+                        alignment_period=duration_pb2.Duration(seconds=3600),
+                        per_series_aligner=monitoring_v3.Aggregation.Aligner.ALIGN_MEAN,
+                    )
+                ],
+            ),
+        )
+    ],
+    combiner=monitoring_v3.AlertPolicy.ConditionCombinerType.OR,
+    notification_channels=[
+        "projects/your-project-id/notificationChannels/CHANNEL_ID"
+    ],
+)
+
+policy = client.create_alert_policy(name=project_name, alert_policy=policy)
+print(f"Created alert policy: {policy.name}")
+```
+
+## 6. Monitoring Dashboard
+
+Query monitoring results from BigQuery to build custom dashboards:
+
+```sql
+-- Recent drift alerts
+SELECT
+  model_display_name,
+  feature_name,
+  drift_score,
+  threshold,
+  detection_time
+FROM
+  `your-project.aiplatform.model_monitoring_drift`
+WHERE
+  drift_score > threshold
+  AND detection_time > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+ORDER BY
+  detection_time DESC
+LIMIT 50;
+```
+
+```sql
+-- Feature attribution changes over time
+SELECT
+  detection_time,
+  feature_name,
+  attribution_score_baseline,
+  attribution_score_current,
+  ABS(attribution_score_current - attribution_score_baseline) AS attribution_delta
+FROM
+  `your-project.aiplatform.model_monitoring_attributions`
+WHERE
+  ABS(attribution_score_current - attribution_score_baseline) > 0.01
+ORDER BY
+  attribution_delta DESC
+```
+
+## Monitoring Checklist
+
+- [ ] Set drift thresholds for all important features
+- [ ] Enable skew detection for first 2 weeks after deployment
+- [ ] Configure feature attribution monitoring for high-stakes models
+- [ ] Connect alert policies to team notification channels
+- [ ] Set `logging_sampling_rate` appropriately (1.0 for dev, 0.1 for prod)
+- [ ] Create a BigQuery dashboard for trend visualization
+- [ ] Define a retraining trigger policy (drift > threshold → Pub/Sub → retrain)
+
+
+

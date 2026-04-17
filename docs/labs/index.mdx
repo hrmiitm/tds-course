@@ -3,11 +3,175 @@ title: Labs
 description: Hands-on assessed exercises on real cloud infrastructure.
 sidebar_position: 4
 ---
-# Labs
-Three graded labs on real cloud infrastructure within the GCP free tier.
+import LabCard from '@site/src/components/LabCard';
 
-| Lab | Title | Difficulty | Duration |
-|---|---|---|---|
-| [Lab 1](./lab-01-data-pipeline) | Build a Data Pipeline | Beginner | ~2 hours |
-| [Lab 2](./lab-02-containerisation) | Containerise and Serve | Intermediate | ~3 hours |
-| [Lab 3](./lab-03-cloud-deploy) | End-to-End Cloud Deploy | Advanced | ~4 hours |
+
+# Labs
+
+Core labs (1–8) are the main graded path.
+Labs 9+ are **optional extensions** that deepen specific 2026 topics (structured output, caching, GraphRAG, guardrails, etc.).
+Complete them in order where possible — many build on earlier labs.
+
+<div style={{display: 'grid', gap: '16px', marginTop: '24px'}}>
+
+<LabCard
+  labNumber={1}
+  title="ChatBot with FastAPI"
+  description="Build a streaming chat API with FastAPI, Dockerize it, deploy to Render, add Google Auth for protected endpoints, embed a simple frontend on HuggingFace Spaces."
+  duration="~3 hours"
+  difficulty="Beginner"
+  tags={["FastAPI", "Docker", "Render", "Google Auth"]}
+  href="/labs/lab-01-chatbot"
+/>
+
+<LabCard
+  labNumber={2}
+  title="RAG ChatBot"
+  description="Build a full RAG pipeline: upload PDFs, chunk, embed into Chroma, retrieve with hybrid search, re-rank, generate answer, evaluate with RAGAS."
+  duration="~4 hours"
+  difficulty="Intermediate"
+  tags={["Chroma", "FAISS", "LLM", "RAGAS"]}
+  href="/labs/lab-02-rag-chatbot"
+/>
+
+<LabCard
+  labNumber={3}
+  title="Gemma4 Finetuning"
+  description="Finetune Gemma4 on a custom instruction dataset using QLoRA with Unsloth, push adapter to HuggingFace Hub, create a Spaces demo."
+  duration="~5 hours"
+  difficulty="Advanced"
+  tags={["Unsloth", "PEFT", "HuggingFace", "Colab"]}
+  href="/labs/lab-03-finetuning"
+/>
+
+<LabCard
+  labNumber={4}
+  title="Hybrid RAG ChatBot"
+  description="Extend Lab 2 with PGVector, add metadata filtering, multi-query retrieval, and a Streamlit/Gradio UI."
+  duration="~4 hours"
+  difficulty="Intermediate"
+  tags={["PGVector", "BM25", "Re-rankers", "Streamlit"]}
+  href="/labs/lab-04-hybrid-rag"
+/>
+
+<LabCard
+  labNumber={5}
+  title="Signature Detection & Cropper"
+  description="Use Grounding DINO Tiny to detect and crop signature regions from scanned documents, output cropped PNGs + bounding box JSON."
+  duration="~3 hours"
+  difficulty="Intermediate"
+  tags={["Grounding DINO", "OpenCV", "FastAPI"]}
+  href="/labs/lab-05-signature-detection"
+/>
+
+<LabCard
+  labNumber={6}
+  title="AI Agent + MCP"
+  description="Build an autonomous research agent: given a question, it searches the web, reads URLs, stores findings in SQLite, and synthesizes a report via MCP server."
+  duration="~5 hours"
+  difficulty="Advanced"
+  tags={["Pydantic AI", "MCP", "VS Code", "Tavily"]}
+  href="/labs/lab-06-ai-agent-mcp"
+/>
+
+<LabCard
+  labNumber={7}
+  title="CI/CD Pipeline"
+  description="Add a full GitHub Actions pipeline (lint → test → build Docker → push to GHCR → deploy to Cloud Run) with branch protection and NeMo Guardrails."
+  duration="~3 hours"
+  difficulty="Intermediate"
+  tags={["GitHub Actions", "Docker", "Cloud Run", "NemoClaw"]}
+  href="/labs/lab-07-cicd"
+/>
+
+<LabCard
+  labNumber={8}
+  title="Full MLOps on GCP"
+  description="End-to-end: Cloud Function trigger → GCS ingest → BigQuery ML → Cloud Run serving → Cloud Logging monitoring → automated retraining."
+  duration="~6 hours"
+  difficulty="Advanced"
+  tags={["BigQuery ML", "Cloud Functions", "Cloud Run", "Monitoring"]}
+  href="/labs/lab-08-mlops-gcp"
+/>
+
+<LabCard
+  labNumber={9}
+  title="LLM Red-Teaming"
+  description="Build a repeatable red-team harness for a tool-using LLM app and turn exploits into CI regression tests."
+  duration="~4 hours"
+  difficulty="Advanced"
+  tags={["LLM Security", "Red-Teaming", "Guardrails"]}
+  href="/labs/lab-09-llm-red-teaming"
+/>
+
+<LabCard
+  labNumber={10}
+  title="Instructor Extraction Loops"
+  description="Build a schema-first extraction pipeline with retries, validation, and tests."
+  duration="~3 hours"
+  difficulty="Intermediate"
+  tags={["Pydantic", "instructor", "Structured Output"]}
+  href="/labs/lab-10-instructor-extraction"
+/>
+
+<LabCard
+  labNumber={11}
+  title="Prompt Caching & Cost Benchmarks"
+  description="Implement a safe prompt/response cache and quantify cost + latency wins."
+  duration="~2 hours"
+  difficulty="Intermediate"
+  tags={["Caching", "LLM Ops", "Latency"]}
+  href="/labs/lab-11-prompt-caching"
+/>
+
+<LabCard
+  labNumber={12}
+  title="Contextual Retrieval Upgrade"
+  description="Make chunks self-contained with headings/metadata and measure RAGAS improvements."
+  duration="~4 hours"
+  difficulty="Intermediate"
+  tags={["RAG", "Chunking", "RAGAS"]}
+  href="/labs/lab-12-contextual-retrieval"
+/>
+
+<LabCard
+  labNumber={13}
+  title="GraphRAG Mini"
+  description="Build a tiny knowledge graph alongside embeddings and use it for multi-hop retrieval."
+  duration="~5 hours"
+  difficulty="Advanced"
+  tags={["GraphRAG", "Knowledge Graphs", "RAG"]}
+  href="/labs/lab-13-graphrag"
+/>
+
+<LabCard
+  labNumber={14}
+  title="LangGraph Agent Workflow"
+  description="Implement a stateful agent graph with retries, guard conditions, and logs."
+  duration="~5 hours"
+  difficulty="Advanced"
+  tags={["Agents", "LangGraph", "Workflows"]}
+  href="/labs/lab-14-langgraph"
+/>
+
+<LabCard
+  labNumber={15}
+  title="Polars + DuckDB Local Warehouse"
+  description="Build a fast local analytics pipeline (ETL → Parquet → SQL features) for ML/RAG."
+  duration="~4 hours"
+  difficulty="Intermediate"
+  tags={["Polars", "DuckDB", "Parquet"]}
+  href="/labs/lab-15-polars-duckdb"
+/>
+
+<LabCard
+  labNumber={16}
+  title="Guardrails + Red-Team Regression"
+  description="Add guardrails to an LLM app and prove they work with a red-team suite in CI."
+  duration="~5 hours"
+  difficulty="Advanced"
+  tags={["Guardrails", "Security", "CI"]}
+  href="/labs/lab-16-guardrails-redteam"
+/>
+
+</div>

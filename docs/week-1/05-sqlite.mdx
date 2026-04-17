@@ -1,0 +1,202 @@
+---
+title: SQLite
+description: Design schemas, write efficient queries, create indexes, and use sqlite-utils
+sidebar_position: 5
+---
+
+# SQLite
+
+SQLite is the world's most deployed database engine. It runs embedded within your application — no server required. For data science workloads under a few gigabytes, SQLite is often the best choice. It is fast, reliable, and requires zero configuration.
+
+## When to Use SQLite
+
+| Use SQLite | Use a server DB |
+|-----------|-----------------|
+| Single-user or low-concurrency apps | High-concurrency web apps |
+| Embedded/IoT devices | Multi-user collaboration |
+| Local data analysis | Shared data warehouse |
+| Prototyping and testing | Production OLTP workloads |
+| File size under ~1 TB | Multiple concurrent writers |
+
+:::tip SQLite is not a toy
+SQLite handles databases up to 281 TB and is used in production by Google, Apple, Microsoft, and Facebook. Do not dismiss it for small-to-medium data science projects.
+:::
+
+## Schema Design
+
+Design your schema with appropriate data types and constraints:
+
+```sql
+-- Create a products table
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    price REAL NOT NULL CHECK (price >= 0),
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Create an orders table with foreign key
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    total_price REAL GENERATED ALWAYS AS (
+        (SELECT price FROM products WHERE id = product_id) * quantity
+    ) STORED,
+    order_date TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'pending'
+        CHECK (status IN ('pending', 'shipped', 'delivered', 'cancelled')),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+);
+
+-- Create an index for common query patterns
+CREATE INDEX idx_orders_product ON orders(product_id);
+CREATE INDEX idx_orders_date ON orders(order_date);
+CREATE INDEX idx_orders_status ON orders(status);
+```
+
+:::warning Enable foreign keys
+SQLite does not enforce foreign keys by default. You must enable them on every connection:
+
+```sql
+PRAGMA foreign_keys = ON;
+```
+Or pass the `_fk=1` query parameter in your connection string.
+:::
+
+## Essential Queries
+
+```sql
+-- Basic aggregation
+SELECT category, COUNT(*) AS product_count, AVG(price) AS avg_price
+FROM products
+GROUP BY category
+HAVING product_count > 5
+ORDER BY avg_price DESC;
+
+-- Window functions for rankings
+SELECT
+    name,
+    category,
+    price,
+    RANK() OVER (PARTITION BY category ORDER BY price DESC) AS price_rank,
+    SUM(price) OVER (PARTITION BY category ORDER BY price
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+FROM products;
+
+-- Common Table Expression (CTE) for readable queries
+WITH monthly_revenue AS (
+    SELECT
+        strftime('%Y-%m', order_date) AS month,
+        SUM(total_price) AS revenue
+    FROM orders
+    WHERE status != 'cancelled'
+    GROUP BY month
+),
+avg_revenue AS (
+    SELECT AVG(revenue) AS avg_rev FROM monthly_revenue
+)
+SELECT
+    m.month,
+    m.revenue,
+    a.avg_rev,
+    ROUND((m.revenue - a.avg_rev) / a.avg_rev * 100, 1) AS pct_diff
+FROM monthly_revenue m, avg_revenue a
+ORDER BY m.month;
+
+-- Upsert (insert or update)
+INSERT INTO products (name, category, price)
+VALUES ('Widget Pro', 'Gadgets', 29.99)
+ON CONFLICT(name) DO UPDATE SET
+    price = excluded.price,
+    updated_at = datetime('now');
+```
+
+## Indexes
+
+Indexes speed up reads at the cost of slower writes. Use them strategically:
+
+```sql
+-- Single-column index
+CREATE INDEX idx_products_category ON products(category);
+
+-- Composite index (column order matters!)
+CREATE INDEX idx_orders_status_date ON orders(status, order_date);
+-- This index helps: WHERE status = 'shipped' AND order_date > '2024-01-01'
+-- This index helps: WHERE status = 'shipped'
+-- This index does NOT help: WHERE order_date > '2024-01-01' (without status)
+
+-- Check if an index is being used
+EXPLAIN QUERY PLAN
+SELECT * FROM orders WHERE status = 'shipped' AND order_date > '2024-01-01';
+-- Look for "USING INDEX idx_orders_status_date"
+
+-- Analyze query performance
+.timer on
+SELECT * FROM orders WHERE product_id = 42;
+```
+
+:::info The query planner decides
+Adding an index does not guarantee SQLite will use it. The query planner considers the table size, index selectivity, and query structure. Always verify with `EXPLAIN QUERY PLAN`.
+:::
+
+## sqlite-utils
+
+[sqlite-utils](https://sqlite-utils.datasette.io/) is a CLI tool and Python library that makes working with SQLite dramatically easier:
+
+```bash
+# Install
+uv tool install sqlite-utils
+
+# Insert CSV data into a new table
+sqlite-utils insert data.db products products.csv --csv
+
+# Insert JSON data
+cat orders.json | sqlite-utils insert data.db orders -
+
+# Inspect a database
+sqlite-utils tables data.db
+sqlite-utils schema data.db products
+
+# Query from the command line
+sqlite-utils data.db "SELECT * FROM products WHERE price > 50 LIMIT 10"
+
+# Add a column
+sqlite-utils add-column data.db products description TEXT
+
+# Enable full-text search
+sqlite-utils enable-fts data.db products name description
+
+# Search
+sqlite-utils search data.db products "wireless keyboard"
+
+# Convert a column type
+sqlite-utils convert data.db products price "float(value)"
+```
+
+Python API:
+
+```python
+from sqlite_utils import Database
+
+db = Database("data.db")
+
+# Insert records
+db["products"].insert_all([
+    {"name": "Widget", "category": "Gadgets", "price": 19.99},
+    {"name": "Gizmo", "category": "Gadgets", "price": 29.99},
+    {"name": "Doohickey", "category": "Tools", "price": 49.99},
+], pk="name", alter=True)
+
+# Query
+for row in db["products"].rows_where("price > 25"):
+    print(row)
+
+# Get row count
+print(f"Total products: {db['products'].count}")
+```
+
+
+

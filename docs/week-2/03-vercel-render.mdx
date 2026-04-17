@@ -1,0 +1,160 @@
+---
+title: Vercel & Render
+description: Deploy serverless functions and containerized apps to Vercel and Render
+sidebar_position: 3
+---
+
+# Vercel & Render
+
+Once your application is built, it needs to be accessible on the internet. Vercel and Render are two popular platforms that make deployment simple. Vercel excels at serverless frontend/API deployments, while Render handles containerized backend services.
+
+## Vercel
+
+[Vercel](https://vercel.com) is optimized for frontend frameworks and serverless functions. It provides automatic HTTPS, global CDN, and preview deployments for every pull request.
+
+### Deploying a FastAPI App
+
+Create a Vercel-compatible entry point:
+
+```python
+# api/index.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from Vercel"}
+
+@app.get("/api/data")
+def get_data():
+    return {"items": [1, 2, 3], "total": 3}
+```
+
+Configure with `vercel.json`:
+
+```json
+{
+  "builds": [
+    { "src": "api/index.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "api/index.py" }
+  ]
+}
+```
+
+Deploy with the Vercel CLI:
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy (interactive first time)
+vercel
+
+# Deploy to production
+vercel --prod
+```
+
+### Serverless Function Limits
+
+| Limit | Value |
+|-------|-------|
+| Execution timeout | 10 seconds (free), 60 seconds (pro) |
+| Memory | 1024 MB |
+| Payload size | 4.5 MB |
+| Cold start | ~200ms for Python |
+
+:::warning Cold starts
+Serverless functions spin down when idle. The first request after idle incurs a "cold start" delay. For Python, this is typically 200-500ms. If your API needs consistently low latency, consider Render or a container-based deployment.
+:::
+
+## Render
+
+[Render](https://render.com) deploys Docker containers and supports persistent disks, background workers, and cron jobs — features that serverless platforms lack.
+
+### Deploying with Docker
+
+1. Push your code to GitHub
+2. In the Render dashboard, click **New → Web Service**
+3. Connect your repository
+4. Select **Docker** as the environment
+5. Configure:
+   - **Name**: `tds-api`
+   - **Region**: Choose closest to your users
+   - **Instance Type**: Free (512 MB RAM) or Starter ($7/month)
+   - **Dockerfile Path**: `./Dockerfile`
+
+### Render Configuration File
+
+Create a `render.yaml` for infrastructure-as-code:
+
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: tds-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tds-db
+          property: connectionString
+      - key: API_KEY
+        sync: false  # Set manually in dashboard
+    plan: free
+    healthCheckPath: /health
+
+databases:
+  - name: tds-db
+    plan: free
+    postgresqlVersion: "16"
+```
+
+### Environment Variables and Secrets
+
+Both platforms handle secrets differently:
+
+**Vercel**:
+```bash
+# Set environment variables
+vercel env add API_KEY
+# Choose: Production, Preview, Development
+# Paste the value when prompted
+```
+
+**Render**:
+```bash
+# Use the dashboard: Settings → Environment
+# Or use the render.yaml with sync: false for secrets
+```
+
+:::tip Never commit secrets
+Always use environment variables for API keys, database passwords, and other secrets. Both Vercel and Render encrypt environment variables at rest. Never hardcode them in your source code or commit `.env` files.
+:::
+
+## Choosing Between Platforms
+
+| Factor | Vercel | Render |
+|--------|--------|--------|
+| Best for | Frontend + API | Backend services |
+| Deployment model | Serverless | Container |
+| Cold starts | Yes | No |
+| Persistent storage | No | Yes (disk) |
+| Background workers | No | Yes |
+| Free tier | 100 GB bandwidth | 750 hours/month |
+| Custom domains | Free | Free |
+| Preview deployments | Automatic | Automatic |
+
+
+

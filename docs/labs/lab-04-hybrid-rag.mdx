@@ -1,0 +1,86 @@
+---
+title: "Lab 4: Hybrid RAG ChatBot"
+description: Extend Lab 2 with PGVector, metadata filtering, and a Streamlit UI.
+sidebar_position: 4
+---
+
+# Lab 4: Hybrid RAG ChatBot
+
+**Difficulty:** Intermediate · **Estimated time:** ~4 hours
+
+## Objective
+
+Extend your Lab 2 RAG system with:
+1. PGVector for persistent vector storage
+2. BM25 + dense hybrid search with fusion
+3. Metadata filtering on document properties
+4. Multi-query retrieval for better recall
+5. Streamlit UI for interactive chat
+
+## Step 1 — Setup PGVector
+
+```python
+import psycopg2
+from pgvector.psycopg2 import register_vector
+
+conn = psycopg2.connect("postgresql://user:pass@localhost:5432/tds_rag")
+register_vector(conn)
+conn.execute("""
+    CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        content TEXT,
+        embedding VECTOR(1536),
+        metadata JSONB
+    )
+""")
+```
+
+## Step 2 — Multi-query retrieval
+
+```python
+def multi_query_retrieve(question: str, num_queries: int = 3):
+    """Generate multiple query variations for better recall."""
+    variations = generate_query_variations(question, num_queries)
+    all_results = []
+    for q in variations:
+        results = hybrid_search(q, top_k=5)
+        all_results.extend(results)
+    return deduplicate_and_rerank(all_results)
+```
+
+## Step 3 — Streamlit UI
+
+```python
+import streamlit as st
+
+st.title("TDS Hybrid RAG ChatBot")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+if prompt := st.chat_input("Ask about the course..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("assistant"):
+        response = rag_pipeline(prompt)
+        st.write(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+```
+
+## Submission
+
+GitHub repo + Docker Compose setup with PostgreSQL + Streamlit app
+
+## Grading rubric
+
+| Criterion | Points |
+|-----------|--------|
+| PGVector stores and retrieves vectors | 20 |
+| Hybrid search with BM25 + dense fusion | 25 |
+| Metadata filtering works correctly | 15 |
+| Multi-query improves retrieval quality | 15 |
+| Streamlit UI is functional | 25 |
+| **Total** | **100** |
+
+

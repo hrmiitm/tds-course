@@ -1,0 +1,195 @@
+---
+title: Docker
+description: Containerize applications with Docker — Dockerfiles, multi-stage builds, and Docker Compose
+sidebar_position: 2
+---
+
+# Docker
+
+Docker packages your application and all its dependencies into a portable container that runs consistently everywhere. This eliminates "works on my machine" problems and is essential for deploying data science applications.
+
+## Core Concepts
+
+- **Image**: A read-only template with instructions for creating a container (like a class in OOP)
+- **Container**: A running instance of an image (like an object in OOP)
+- **Dockerfile**: A text file with instructions to build an image
+- **Registry**: A storage service for images (Docker Hub, GitHub Container Registry)
+
+## Writing a Dockerfile
+
+Here is a production-ready Dockerfile for a FastAPI application:
+
+```dockerfile
+# Stage 1: Build dependencies
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install uv for fast dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy dependency files first (leverages Docker layer caching)
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies into a virtual environment
+RUN uv venv /app/.venv && \
+    uv pip install --python /app/.venv/bin/python -r uv.lock
+
+# Stage 2: Production image
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Set path to use the virtual environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+# Copy application code
+COPY . .
+
+# Run as non-root user for security
+RUN useradd --create-home appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Expose the port
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+:::tip Multi-stage builds
+The `builder` stage installs dependencies and the final stage copies only the result. This dramatically reduces image size — from ~1 GB to ~200 MB — because the final image excludes build tools, pip cache, and intermediate files.
+:::
+
+## Docker Layer Caching
+
+Docker builds images in layers. Each instruction creates a new layer. If a layer hasn't changed, Docker reuses it from cache:
+
+```dockerfile
+# GOOD: Copy dependency files first, install, then copy code
+COPY pyproject.toml uv.lock ./
+RUN uv pip install -r uv.lock
+COPY . .
+
+# BAD: Copy everything first (code changes invalidate the dependency cache)
+COPY . .
+RUN uv pip install -r uv.lock
+```
+
+The "good" version only re-runs `pip install` when `pyproject.toml` or `uv.lock` change. The "bad" version re-runs it every time any source file changes.
+
+## .dockerignore
+
+Prevent unnecessary files from entering the build context:
+
+```text
+.venv/
+__pycache__/
+*.pyc
+.git/
+.env
+data/
+*.csv
+*.parquet
+node_modules/
+.vscode/
+.pytest_cache/
+```
+
+## Docker Compose
+
+Docker Compose orchestrates multiple containers for local development:
+
+```yaml
+# docker-compose.yml
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data.db
+      - API_KEY=${API_KEY}
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tds_data
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+```
+
+Run with:
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f api
+
+# Rebuild after code changes
+docker compose up -d --build
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (fresh start)
+docker compose down -v
+```
+
+## Common Commands
+
+```bash
+# Build an image
+docker build -t my-api:latest .
+
+# Run a container
+docker run -d -p 8000:8000 --name my-api my-api:latest
+
+# View running containers
+docker ps
+
+# Execute a command inside a running container
+docker exec -it my-api bash
+
+# View container logs
+docker logs -f my-api
+
+# Stop and remove a container
+docker stop my-api && docker rm my-api
+
+# Remove dangling images (cleanup)
+docker image prune -f
+
+# Inspect image layers
+docker history my-api:latest
+```
+
+:::warning Don't run as root
+Always create a non-root user in your Dockerfile. Running containers as root is a security risk — if an attacker breaks out of the container, they have root access on the host. The `USER appuser` directive in our Dockerfile handles this.
+:::
+
+
+

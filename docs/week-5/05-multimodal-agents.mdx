@@ -1,0 +1,260 @@
+---
+title: Multimodal Agents
+description: Build agents that can see images, browse the web, and combine vision with tool use for complex real-world tasks.
+sidebar_position: 5
+---
+
+# Multimodal Agents
+
+Modern LLMs can process more than just text. **Multimodal agents** combine vision, audio, and text understanding with tool use to tackle complex real-world tasks. This page covers how to build agents that can analyze images, browse the web, and reason across multiple modalities.
+
+## Vision + Tool Use
+
+The most powerful multimodal pattern is combining **vision understanding** with **tool execution**. The agent sees an image, reasons about what it needs to do, and then calls tools to act on that understanding.
+
+```python
+import openai
+import base64
+from pathlib import Path
+
+def encode_image(image_path: str) -> str:
+    """Encode an image file to base64."""
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+def analyze_and_act(image_path: str) -> str:
+    """Analyze an image and take appropriate action."""
+
+    base64_image = encode_image(image_path)
+
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": """You are a quality control agent. Analyze the provided
+product image and determine if there are any defects. If defects are found,
+describe them precisely and suggest corrective actions using the available tools.
+
+Available tools:
+- log_defect(type, severity, description): Log a defect in the QA system
+- notify_team(channel, message): Send a notification to the relevant team
+- create_ticket(title, priority, description): Create a support ticket"""
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Please inspect this product image for defects:"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}",
+                            "detail": "high"
+                        }
+                    }
+                ]
+            }
+        ],
+        max_tokens=1000,
+    )
+    return response.choices[0].message.content
+```
+
+## Analyzing Images with Structured Output
+
+Get structured analysis results from image inputs:
+
+```python
+from pydantic import BaseModel, Field
+from openai import OpenAI
+
+client = OpenAI()
+
+class ImageAnalysis(BaseModel):
+    objects_detected: list[str] = Field(description="List of objects found in the image")
+    scene_type: str = Field(description="Type of scene (indoor, outdoor, etc.)")
+    text_found: list[str] = Field(description="Any text visible in the image")
+    dominant_colors: list[str] = Field(description="Dominant colors in the image")
+    description: str = Field(description="Detailed description of the image")
+    anomalies: list[str] = Field(description="Any unusual or unexpected elements")
+
+def analyze_image_structured(image_url: str) -> ImageAnalysis:
+    """Get structured analysis of an image."""
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Analyze this image in detail:"},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ],
+            }
+        ],
+        response_format=ImageAnalysis,
+        max_tokens=1000,
+    )
+    return response.choices[0].message.parsed
+
+# Usage
+analysis = analyze_image_structured("https://example.com/photo.jpg")
+print(f"Objects: {analysis.objects_detected}")
+print(f"Scene: {analysis.scene_type}")
+print(f"Anomalies: {analysis.anomalies}")
+```
+
+## Web Browsing Agents
+
+Web browsing agents can navigate the internet, read pages, and extract information. Here's how to build one using a browser automation tool:
+
+```python
+from pydantic_ai import Agent, RunContext
+import httpx
+from bs4 import BeautifulSoup
+
+class BrowserDeps(BaseModel):
+    user_agent: str = "TDS-Course-Bot/1.0"
+
+browsing_agent = Agent(
+    model="openai:gpt-4o",
+    result_type=str,
+    deps_type=BrowserDeps,
+    system_prompt="""You are a web research agent. You can fetch web pages and
+extract information from them. Use the available tools to browse the web and
+answer the user's question with real, current information.
+
+Always cite your sources by including the URLs you used."""
+)
+
+@browsing_agent.tool
+async def fetch_webpage(ctx: RunContext[BrowserDeps], url: str) -> str:
+    """Fetch and extract text content from a web page.
+
+    Args:
+        url: The URL of the page to fetch
+
+    Returns:
+        Extracted text content from the page
+    """
+    try:
+        async with httpx.AsyncClient(
+            headers={"User-Agent": ctx.deps.user_agent},
+            follow_redirects=True,
+            timeout=30.0,
+        ) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Remove script and style elements
+        for element in soup(["script", "style", "nav", "footer"]):
+            element.decompose()
+
+        # Extract text
+        text = soup.get_text(separator="\n", strip=True)
+
+        # Truncate to reasonable length
+        if len(text) > 5000:
+            text = text[:5000] + "\n\n[Content truncated...]"
+
+        return text
+    except Exception as e:
+        return f"Error fetching {url}: {str(e)}"
+
+@browsing_agent.tool
+async def search_web(ctx: RunContext[BrowserDeps], query: str) -> str:
+    """Search the web for information.
+
+    Args:
+        query: Search query string
+
+    Returns:
+        Search results with titles and URLs
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.duckduckgo.com/",
+            params={"q": query, "format": "json", "no_html": 1},
+        )
+        data = response.json()
+        results = []
+        if data.get("AbstractText"):
+            results.append(f"Summary: {data['AbstractText']}")
+        for topic in data.get("RelatedTopics", [])[:5]:
+            if isinstance(topic, dict) and "Text" in topic:
+                results.append(f"- {topic['Text']}")
+        return "\n".join(results) if results else "No results found."
+```
+
+## Multi-Step Vision Agent
+
+Combine vision and web tools for complex tasks:
+
+```python
+from pydantic import BaseModel
+from typing import Literal
+
+class VisualQAResult(BaseModel):
+    answer: str
+    confidence: float
+    sources_used: list[str]
+    follow_up_questions: list[str]
+
+vision_agent = Agent(
+    model="openai:gpt-4o",
+    result_type=VisualQAResult,
+    system_prompt="""You are a visual question-answering agent. You can:
+1. Analyze images in detail
+2. Search the web for additional context
+3. Combine visual and textual information to answer questions
+
+Always provide your confidence level and list any external sources you used."""
+)
+
+# Example: Identify a plant from a photo, then research care instructions
+async def identify_and_research(image_path: str) -> VisualQAResult:
+    base64_img = encode_image(image_path)
+    result = await vision_agent.run(
+        [
+            {"type": "text", "text": "What plant is this? Provide care instructions."},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_img}"},
+            },
+        ]
+    )
+    return result.data
+```
+
+:::tip Image Resolution
+GPT-4o processes images at different detail levels:
+- **Low**: 512×512, cheaper, good for overall scene understanding
+- **High**: Full resolution (up to 2048×2048 tiles), better for text/detailed analysis
+- **Auto**: Model decides based on image size
+
+Use `"detail": "low"` when you only need general descriptions to save tokens.
+:::
+
+## Comparing Vision Models
+
+| Model | Strengths | Max Image Size | Cost |
+|-------|-----------|---------------|------|
+| **GPT-4o** | General vision, OCR, diagrams | 20MB per image | $$ |
+| **Gemini 2.0 Flash** | Fast, long video support | 20MB per image | $ |
+| **Claude 3.5 Sonnet** | Detailed analysis, charts | 5MB per image, 100 images | $$ |
+| **LLaVA 1.6** | Open-source, self-hosted | Varies by hardware | Free |
+
+:::warning Privacy Considerations
+When sending images to cloud-based vision APIs:
+- Avoid sending images with PII (faces, license plates, documents)
+- Use on-premise models (LLaVA) for sensitive data
+- Implement data retention policies
+- Consider anonymizing images before processing
+:::
+
+
+

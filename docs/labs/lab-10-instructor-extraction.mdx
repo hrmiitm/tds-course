@@ -1,0 +1,52 @@
+---
+title: "Lab 10: Instructor Extraction Loops"
+description: Build a schema-first extraction pipeline with retries, validation, and tests.
+sidebar_position: 10
+---
+
+# Lab 10: Instructor Extraction Loops
+
+**Difficulty:** Intermediate · **Estimated time:** ~2–4 hours
+
+## Objective
+
+Build a robust structured-extraction microservice:
+
+- input: messy text (emails, reviews, OCR snippets)
+- output: validated JSON that matches a Pydantic schema
+- behavior: automatic retries on validation errors
+
+## Requirements
+
+- Use `pydantic` models as the contract
+- Use `instructor` (or an equivalent schema-first mechanism)
+- Add a small test set (at least 20 samples)
+
+## Suggested schema
+
+```python
+class Invoice(BaseModel):
+    invoice_id: str
+    vendor: str
+    date: str
+    currency: str
+    total: float
+    line_items: list[LineItem]
+```
+
+## Deliverables
+
+- `schemas.py` (Pydantic models)
+- `extract.py` (extraction function)
+- `tests/test_extraction.py` with 20 fixtures
+- `README.md` describing how to run + limitations
+
+## Stretch goals
+
+- Add a “repair only” mode: feed validation errors back to the model
+- Add metrics: validation failure rate + retry count histogram
+
+## Related reading
+
+- [Week 3: Structured Output](../week-3/structured-output)
+- [Week 3: Structured Output with instructor](../week-3/instructor)

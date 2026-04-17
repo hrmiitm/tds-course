@@ -1,0 +1,76 @@
+---
+title: GraphRAG
+description: Add structure to RAG with knowledge graphs for better multi-hop reasoning.
+sidebar_position: 8
+---
+
+# GraphRAG
+
+GraphRAG adds **structure** to RAG by building a knowledge graph (entities + relations) alongside your vector store. It helps most when questions require **multi-hop reasoning**, like:
+
+- “Which components depend on X, and what breaks if we change it?”
+- “What’s the relationship between A and B across multiple docs?”
+
+## Learning goals
+
+- Understand the GraphRAG pipeline (extract → store → expand → retrieve → synthesize)
+- Build a toy graph from documents
+- Use graph expansion to guide retrieval
+
+## The GraphRAG pipeline
+
+1. **Entity extraction**: find entities (people, concepts, APIs)
+2. **Relation extraction**: connect them (A uses B, A depends on B)
+3. **Graph store**: nodes/edges + attributes
+4. **Query-time**:
+   - extract entities from the question
+   - expand neighborhood (k hops)
+   - retrieve text chunks near those entities
+5. **Synthesis**: answer grounded in retrieved text + graph structure
+
+## Toy example (NetworkX)
+
+```python
+import networkx as nx
+
+G = nx.Graph()
+G.add_edge("RAGAS", "RAG Evaluation", relation="measures")
+G.add_edge("Hybrid Search", "BM25", relation="uses")
+G.add_edge("Hybrid Search", "Embeddings", relation="uses")
+
+def expand(seed: str, hops: int = 1) -> set[str]:
+    frontier = {seed}
+    seen = {seed}
+    for _ in range(hops):
+        nxt = set()
+        for n in frontier:
+            nxt |= set(G.neighbors(n))
+        nxt -= seen
+        seen |= nxt
+        frontier = nxt
+    return seen
+
+print(expand("Hybrid Search", hops=1))
+```
+
+## How it connects to your vector store
+
+A practical pattern:
+
+- store *text chunks* in a vector DB
+- store *entity mentions* as metadata on each chunk
+- graph expansion picks which entities (and therefore which chunks) to fetch
+
+## When GraphRAG is a bad idea
+
+- If your questions are mostly “find the paragraph” (classic RAG is enough)
+- If entity extraction is noisy (graph becomes garbage-in-garbage-out)
+- If latency budget is tight (graph expansion adds steps)
+
+## Mini-lab (optional)
+
+Build a “course knowledge graph”:
+
+- entities: week topics, tools, libraries
+- relations: “uses”, “extends”, “evaluated-by”
+- query: multi-hop questions and compare to hybrid search

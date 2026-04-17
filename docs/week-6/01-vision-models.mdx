@@ -1,0 +1,209 @@
+---
+title: Vision Models
+description: Compare and use the leading vision-language models — GPT-4o Vision, Gemini Flash/Pro, and open-source LLaVA for image understanding tasks.
+sidebar_position: 1
+---
+
+# Vision Models
+
+Vision-Language Models (VLMs) combine visual understanding with language reasoning. They can describe images, answer questions about visual content, extract text (OCR), and reason about diagrams and charts. This page covers the three major families of vision models you'll use in this course.
+
+## GPT-4o Vision
+
+OpenAI's GPT-4o is a natively multimodal model — it processes text and images together in a single architecture, not through a separate vision encoder bolted onto a language model.
+
+### Basic Image Analysis
+
+```python
+from openai import OpenAI
+import base64
+
+client = OpenAI()
+
+def analyze_image(image_path: str, prompt: str = "Describe this image in detail.") -> str:
+    """Analyze an image using GPT-4o Vision."""
+    with open(image_path, "rb") as f:
+        base64_image = base64.b64encode(f.read()).decode("utf-8")
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}",
+                            "detail": "high",
+                        },
+                    },
+                ],
+            }
+        ],
+        max_tokens=1000,
+    )
+    return response.choices[0].message.content
+
+# Usage
+description = analyze_image("photo.jpg", "What objects are in this image? List them with counts.")
+print(description)
+```
+
+### Multiple Images
+
+```python
+def compare_images(image_paths: list[str], question: str) -> str:
+    """Compare multiple images using GPT-4o."""
+    content = [{"type": "text", "text": question}]
+    for path in image_paths:
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "auto"},
+        })
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": content}],
+        max_tokens=1000,
+    )
+    return response.choices[0].message.content
+```
+
+### Detail Levels
+
+| Detail Level | Resolution | Token Cost | Best For |
+|-------------|-----------|------------|----------|
+| `low` | 512×512 | ~85 tokens | General scene description |
+| `high` | Up to 2048×2048 tiles | ~170-1105 tokens | OCR, fine details, charts |
+| `auto` | Model decides | Varies | Default choice |
+
+:::tip Token Optimization
+Use `"detail": "low"` when you only need high-level descriptions. This reduces both cost and latency significantly. Reserve `"detail": "high"` for tasks requiring fine-grained analysis like reading text or detecting small objects.
+:::
+
+## Gemini Flash & Pro
+
+Google's Gemini models offer competitive vision capabilities with some unique advantages:
+
+- **Gemini 2.0 Flash**: Fast and cost-effective, good for real-time applications
+- **Gemini 2.0 Pro**: Higher accuracy for complex reasoning tasks
+- **Native video support**: Can process video frames directly
+
+```python
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+
+def analyze_with_gemini(image_path: str, prompt: str) -> str:
+    """Analyze an image using Gemini."""
+    model = genai.GenerativeModel("gemini-2.0-flash")
+
+    # Upload the image
+    uploaded_file = genai.upload_file(image_path)
+
+    response = model.generate_content([prompt, uploaded_file])
+    return response.text
+
+# Video analysis (unique to Gemini)
+def analyze_video(video_path: str, prompt: str) -> str:
+    """Analyze a video using Gemini."""
+    model = genai.GenerativeModel("gemini-2.0-flash")
+
+    video_file = genai.upload_file(video_path)
+
+    # Wait for processing
+    import time
+    while video_file.state.name == "PROCESSING":
+        time.sleep(2)
+        video_file = genai.get_file(video_file.name)
+
+    response = model.generate_content([prompt, video_file])
+    return response.text
+
+# Usage
+result = analyze_with_gemini("chart.png", "Extract all data points from this chart and format as JSON.")
+print(result)
+```
+
+## LLaVA (Open-Source)
+
+[LLaVA](https://github.com/haotian-liu/LLaVA) (Large Language-and-Vision Assistant) is an open-source vision-language model that you can run locally. It's based on Vicuna/Llama with a visual encoder.
+
+```python
+# Using LLaVA via Ollama (simplest approach)
+import requests
+import base64
+
+def analyze_with_llava(image_path: str, prompt: str) -> str:
+    """Analyze an image using LLaVA via Ollama."""
+    with open(image_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llava",
+            "prompt": prompt,
+            "images": [b64],
+            "stream": False,
+        },
+    )
+    return response.json()["response"]
+
+# Or using the transformers library directly
+from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
+from PIL import Image
+import torch
+
+def run_llava_local(image_path: str, prompt: str) -> str:
+    """Run LLaVA locally with transformers."""
+    model_id = "llava-hf/llava-v1.6-mistral-7b-hf"
+    processor = LlavaNextProcessor.from_pretrained(model_id)
+    model = LlavaNextForConditionalGeneration.from_pretrained(
+        model_id,
+        torch_dtype=torch.float16,
+        device_map="auto",
+    )
+
+    image = Image.open(image_path)
+    inputs = processor(prompt, image, return_tensors="pt").to(model.device)
+
+    output = model.generate(**inputs, max_new_tokens=500)
+    return processor.decode(output[0], skip_special_tokens=True)
+```
+
+:::info Hardware Requirements for LLaVA
+- **7B model**: ~14GB VRAM (float16) or ~8GB (4-bit quantized)
+- **13B model**: ~26GB VRAM (float16) or ~10GB (4-bit quantized)
+- Use `llava:7b-v1.6` via Ollama for the best quality/speed tradeoff on consumer hardware
+:::
+
+## Model Comparison
+
+| Feature | GPT-4o | Gemini 2.0 Flash | LLaVA 1.6 |
+|---------|--------|-------------------|-----------|
+| **Image understanding** | Excellent | Very Good | Good |
+| **OCR** | Excellent | Very Good | Fair |
+| **Chart/diagram reasoning** | Excellent | Good | Fair |
+| **Video support** | No (frames only) | Yes (native) | No |
+| **Max images per request** | 20 | 16 | 1 |
+| **Self-hosted** | No | No | Yes |
+| **Cost per 1K image tokens** | ~$0.003 | ~$0.0002 | Free (compute only) |
+| **Latency** | 1-3s | 0.5-2s | 2-10s (local) |
+
+## When to Use Which Model
+
+- **GPT-4o**: When you need the highest accuracy, especially for OCR, chart reading, or complex visual reasoning
+- **Gemini Flash**: When you need fast, cost-effective vision at scale, or need video understanding
+- **LLaVA**: When data privacy requires on-premise processing, or you want to fine-tune for a specific domain
+
+:::warning Rate Limits
+All cloud vision APIs have rate limits. GPT-4o allows ~500 requests/minute on Tier 3+. Gemini Flash allows 1500 requests/minute. Plan your batch processing accordingly and implement exponential backoff.
+:::
+
+
+

@@ -1,0 +1,235 @@
+---
+title: Pydantic AI
+description: Define type-safe AI agents with Pydantic AI — tool registration, structured output, dependency injection, and production-grade error handling.
+sidebar_position: 2
+---
+
+# Pydantic AI
+
+[Pydantic AI](https://github.com/pydantic/pydantic-ai) is a Python agent framework built by the Pydantic team that leverages Python's type system for building production-grade AI agents. It provides **type-safe tool definitions**, **structured output validation**, and **dependency injection** — all built on top of the same Pydantic library you already know.
+
+## Why Pydantic AI?
+
+- **Type safety**: Tool signatures and outputs are validated at runtime via Pydantic models
+- **Model-agnostic**: Works with OpenAI, Anthropic, Gemini, Ollama, and more
+- **Dependency injection**: Clean testing with mock dependencies
+- **Structured output**: Get typed Python objects, not raw strings
+- **Built-in tracing**: Debug agent runs with structured logs
+
+## Defining an Agent
+
+```python
+from pydantic_ai import Agent
+from pydantic import BaseModel
+
+# Define your output type
+class AnalysisResult(BaseModel):
+    summary: str
+    key_findings: list[str]
+    confidence: float  # 0.0 to 1.0
+    recommendation: str
+
+# Create the agent with structured output
+analyst = Agent(
+    model="openai:gpt-4o",
+    result_type=AnalysisResult,
+    system_prompt="""You are a data analyst. Analyze the provided text and return
+a structured analysis with summary, key findings, confidence level, and recommendation.
+Be concise and factual.""",
+)
+```
+
+## Registering Tools
+
+Tools in Pydantic AI are just **decorated functions**. The type hints and docstrings are automatically sent to the LLM so it knows when and how to call them.
+
+```python
+from pydantic_ai import RunContext
+import httpx
+
+# Simple tool — no dependencies
+@analyst.tool
+async def search_web(ctx: RunContext[None], query: str) -> str:
+    """Search the web for information about a topic.
+
+    Args:
+        query: The search query string.
+
+    Returns:
+        A summary of search results.
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query},
+            headers={"X-Subscription-Token": "YOUR_API_KEY"},
+        )
+        results = response.json().get("web", {}).get("results", [])
+        return "\n".join(
+            f"- {r['title']}: {r.get('description', '')}" for r in results[:5]
+        )
+
+
+# Tool with dependencies — uses the deps pattern
+class DatabaseDeps(BaseModel):
+    db_url: str
+    api_key: str
+
+db_agent = Agent(
+    model="openai:gpt-4o",
+    result_type=str,
+    deps_type=DatabaseDeps,
+    system_prompt="You are a database assistant. Use the provided tools to query data.",
+)
+
+@db_agent.tool
+async def query_database(ctx: RunContext[DatabaseDeps], sql: str) -> str:
+    """Execute a read-only SQL query against the database.
+
+    Args:
+        sql: A SELECT query to execute. Only SELECT statements are allowed.
+
+    Returns:
+        Query results as a formatted string.
+    """
+    # Validate it's a SELECT query
+    if not sql.strip().upper().startswith("SELECT"):
+        return "Error: Only SELECT queries are allowed."
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{ctx.deps.db_url}/query",
+            json={"sql": sql},
+            headers={"Authorization": f"Bearer {ctx.deps.api_key}"},
+        )
+        return str(response.json())
+```
+
+:::tip Tool Docstrings Matter
+The LLM reads your function's docstring and parameter descriptions to decide *when* to call a tool and *what arguments* to pass. Write clear, specific docstrings — they're your tool's API documentation.
+:::
+
+## Running the Agent
+
+```python
+import asyncio
+
+async def main():
+    # Simple run
+    result = await analyst.run("Analyze the impact of AI on healthcare")
+    print(result.data)
+    # Output: AnalysisResult(
+    #   summary="AI is transforming healthcare through...",
+    #   key_findings=["Diagnostic accuracy improved by 20%", ...],
+    #   confidence=0.85,
+    #   recommendation="Invest in AI-assisted diagnostic tools..."
+    # )
+
+    # Run with dependencies
+    deps = DatabaseDeps(
+        db_url="https://api.example.com/db",
+        api_key="sk-xxx",
+    )
+    db_result = await db_agent.run(
+        "How many users signed up last week?",
+        deps=deps,
+    )
+    print(db_result.data)
+
+    # Streaming run
+    async with analyst.run_stream("Analyze recent market trends") as stream:
+        async for chunk in stream.stream_text(delta=True):
+            print(chunk, end="", flush=True)
+
+asyncio.run(main())
+```
+
+## Structured Output with Validation
+
+One of Pydantic AI's most powerful features is getting **validated Python objects** back from the LLM, not raw strings.
+
+```python
+from pydantic import BaseModel, Field
+from typing import Literal
+from pydantic_ai import Agent
+
+class CodeReview(BaseModel):
+    quality_score: int = Field(ge=1, le=10, description="Overall code quality 1-10")
+    issues: list[str] = Field(description="List of issues found")
+    severity: Literal["low", "medium", "high", "critical"]
+    suggested_fix: str = Field(description="Suggested fix for the main issue")
+    approved: bool
+
+reviewer = Agent(
+    model="openai:gpt-4o",
+    result_type=CodeReview,
+    system_prompt="""You are a senior code reviewer. Analyze the provided code
+and return a structured review with quality score, issues, severity level,
+suggested fix, and whether the code should be approved for merge.""",
+)
+
+async def review_code(code: str) -> CodeReview:
+    result = await reviewer.run(f"Review this code:\n```\n{code}\n```")
+    return result.data
+
+# The output is a validated Python object
+review = await review_code("def add(a, b): return a + b")
+print(f"Score: {review.quality_score}/10")
+print(f"Approved: {review.approved}")
+print(f"Issues: {review.issues}")
+```
+
+## Error Handling and Retries
+
+```python
+from pydantic_ai import Agent, ModelRetry
+
+weather_agent = Agent("openai:gpt-4o", result_type=str)
+
+@weather_agent.tool
+async def get_forecast(ctx: RunContext[None], city: str) -> str:
+    """Get the weather forecast for a city."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.weather.com/v1/forecast?city={city}"
+        )
+        if response.status_code == 404:
+            raise ModelRetry(
+                f"City '{city}' not found. Please try a different city name."
+            )
+        response.raise_for_status()
+        return response.text
+```
+
+:::warning ModelRetry vs Exceptions
+- Use `ModelRetry` when the LLM can fix the issue by trying again with different arguments
+- Raise a regular `Exception` when the error is not recoverable (e.g., API key invalid)
+:::
+
+## Testing Agents
+
+Pydantic AI's dependency injection makes testing straightforward:
+
+```python
+import pytest
+from pydantic_ai import Agent
+
+# Create test agent with mock deps
+test_agent = Agent("test", result_type=str, deps_type=dict)
+
+@test_agent.tool
+async def mock_search(ctx: RunContext[dict], query: str) -> str:
+    """Mock search for testing."""
+    return ctx.deps.get(query, "No results found")
+
+@pytest.mark.asyncio
+async def test_agent_search():
+    result = await test_agent.run(
+        "Search for Python tutorials",
+        deps={"Python tutorials": "Found 10 Python tutorials"},
+    )
+    assert "Python" in result.data
+```
+
+
+

@@ -1,0 +1,79 @@
+---
+title: Polars
+description: Modern DataFrame engine (often 10–100× faster than pandas) for 2026-grade data prep.
+sidebar_position: 8
+---
+
+# Polars
+
+Polars is a modern DataFrame engine that’s fast by default and encourages **reproducible pipelines** via lazy execution.
+
+## Learning goals
+
+- Know when to use Polars instead of pandas
+- Write lazy pipelines that push down filters/projections
+- Read/write Parquet efficiently
+
+## Eager vs lazy
+
+- **Eager**: runs immediately (`pl.DataFrame`)
+- **Lazy**: builds a query plan, then optimizes (`pl.scan_parquet(...).filter(...).select(...)`)
+
+```python
+import polars as pl
+
+# Lazy scan (does not read whole file yet)
+df = (
+    pl.scan_parquet("data/events.parquet")
+    .filter(pl.col("event") == "purchase")
+    .group_by("user_id")
+    .agg(pl.count().alias("purchases"))
+)
+
+result = df.collect()  # executes optimized plan
+```
+
+:::tip Why lazy is huge
+Lazy execution enables predicate pushdown and column pruning — the main reason Polars feels “unfairly fast”.
+:::
+
+## Common patterns
+
+### Joins
+
+```python
+users = pl.scan_parquet("data/users.parquet")
+events = pl.scan_parquet("data/events.parquet")
+
+joined = events.join(users, on="user_id", how="left").select(
+    "user_id", "country", "event", "timestamp"
+)
+```
+
+### Window functions
+
+```python
+ranked = (
+    pl.scan_parquet("data/events.parquet")
+    .with_columns(
+        pl.col("timestamp").rank("dense").over("user_id").alias("event_rank")
+    )
+)
+```
+
+## Interop with DuckDB
+
+Polars + DuckDB is a common 2026 stack:
+
+- Polars: fast ETL + feature engineering
+- DuckDB: SQL analytics + joins across many Parquet files
+
+See: [DuckDB + Parquet](./duckdb-parquet).
+
+## Mini-lab (optional)
+
+Rewrite a pandas ETL to Polars:
+
+- show runtime and memory
+- output Parquet
+- validate row counts + key aggregates match

@@ -3,39 +3,40 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "docusaurus": "docusaurus",
-    "start": "docusaurus start",
-    "build": "docusaurus build",
-    "swizzle": "docusaurus swizzle",
-    "deploy": "docusaurus deploy",
-    "clear": "docusaurus clear",
-    "serve": "docusaurus serve",
-    "write-translations": "docusaurus write-translations",
-    "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "docusaurus": "node --require ./webpack-fix.js ./node_modules/@docusaurus/core/bin/docusaurus.mjs",
+    "start": "npm run docusaurus -- start",
+    "build": "npm run docusaurus -- build",
+    "swizzle": "npm run docusaurus -- swizzle",
+    "deploy": "npm run docusaurus -- deploy",
+    "clear": "npm run docusaurus -- clear",
+    "serve": "npm run docusaurus -- serve",
+    "write-translations": "npm run docusaurus -- write-translations",
+    "write-heading-ids": "npm run docusaurus -- write-heading-ids",
+    "typecheck": "tsc --noEmit",
+    "lint": "npm run typecheck"
   },
   "dependencies": {
-    "@docusaurus/core": "3.7.0",
-    "@docusaurus/preset-classic": "3.7.0",
+    "@docusaurus/core": "3.10.0",
+    "@docusaurus/preset-classic": "3.10.0",
+    "@docusaurus/theme-mermaid": "3.10.0",
+    "@easyops-cn/docusaurus-search-local": "^0.55.1",
     "@mdx-js/react": "^3.0.0",
-    "autoprefixer": "^10.4.27",
+    "autoprefixer": "^10.5.0",
     "clsx": "^2.0.0",
-    "framer-motion": "^12.38.0",
-    "lucide-react": "^0.400.0",
-    "postcss": "^8.5.9",
+    "lucide-react": "^1.8.0",
+    "postcss": "^8.5.10",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^3.4.17"
+    "remark-gfm": "4.0.1",
+    "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.7.0",
-    "@docusaurus/tsconfig": "3.7.0",
-    "@docusaurus/types": "3.7.0",
-    "typescript": "~5.6.2"
-  },
-  "overrides": {
-    "webpack": "5.93.0"
+    "@docusaurus/module-type-aliases": "3.10.0",
+    "@docusaurus/tsconfig": "3.10.0",
+    "@docusaurus/types": "3.10.0",
+    "@types/react": "^19.0.0",
+    "typescript": "~6.0.2"
   },
   "browserslist": {
     "production": [
@@ -50,6 +51,6 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=24.0.0 <25.0.0"
   }
 }

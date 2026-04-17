@@ -1,0 +1,61 @@
+---
+title: Grounding DINO Tiny
+description: Lightweight open-vocabulary detection for real-world document and image pipelines.
+sidebar_position: 6
+---
+
+# Grounding DINO Tiny
+
+Grounding DINO Tiny is a smaller, cheaper open-vocabulary detector. You give it an image and a text prompt like “signature”, “invoice total”, or “person wearing helmet”, and it returns bounding boxes.
+
+## Learning goals
+
+- Understand when “Tiny” is good enough (speed/cost vs accuracy)
+- Build a reliable post-processing pipeline (thresholds + NMS)
+- Serve detections behind a simple API
+
+## Why “open-vocabulary” matters
+
+Instead of training a custom detector for every label, you can:
+
+- start with a text prompt
+- iterate quickly on real data
+- add a finetuned model later if needed
+
+## Output format (what you should standardize)
+
+For production pipelines, standardize on one JSON format:
+
+```json
+{
+  "prompt": "signature",
+  "boxes": [
+    {"x1": 120, "y1": 340, "x2": 410, "y2": 515, "score": 0.62}
+  ]
+}
+```
+
+## Post-processing checklist
+
+- **Confidence threshold** (e.g., 0.25–0.5)
+- **NMS** (remove overlapping boxes)
+- **Clamp** boxes to image boundaries
+- Convert to a consistent coordinate system (pixel vs normalized)
+
+:::tip Rule of thumb
+If you’ll crop regions (like signatures), err on the side of **slightly larger boxes** to avoid cutting off content.
+:::
+
+## Packaging as an API
+
+A simple API contract for a detection service:
+
+- `POST /detect` with image + `prompt`
+- returns boxes + scores
+- optional `POST /crop` returns cropped PNGs
+
+This is exactly what Lab 5 (Signature Detection) builds toward.
+
+## Where this fits
+
+Start with [Grounding DINO](./grounding-dino) for fundamentals, then use Tiny when latency/cost matters.

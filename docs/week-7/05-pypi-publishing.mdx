@@ -1,0 +1,280 @@
+---
+title: PyPI Publishing
+description: Publish Python packages to PyPI with uv build, uv publish, and automated GitHub Actions release workflows.
+sidebar_position: 5
+---
+
+# PyPI Publishing
+
+Publishing your package to [PyPI](https://pypi.org) makes it installable by anyone with a simple `pip install your-package`. This page covers building, publishing, and automating releases with GitHub Actions.
+
+## Prerequisites
+
+Before publishing, ensure your package is ready:
+
+```bash
+# 1. Verify the package structure
+ls -la src/my_package/
+
+# 2. Install build tools
+uv pip install build twine
+
+# 3. Run your tests
+pytest
+
+# 4. Lint your code
+ruff check src/
+mypy src/
+```
+
+## Building the Package
+
+### With uv (Recommended)
+
+```bash
+# Build both wheel and source distribution
+uv build
+
+# This creates:
+# dist/my_package-0.1.0-py3-none-any.whl  (binary wheel)
+# dist/my_package-0.1.0.tar.gz              (source distribution)
+```
+
+### With build (Alternative)
+
+```bash
+# Build the package
+python -m build
+
+# Verify the package contents
+tar -tzf dist/my_package-0.1.0.tar.gz
+unzip -l dist/my_package-0.1.0-py3-none-any.whl
+```
+
+### Check Before Publishing
+
+```bash
+# Validate the package metadata
+twine check dist/*
+
+# Output should show:
+# Checking dist/my_package-0.1.0-py3-none-any.whl: PASSED
+# Checking dist/my_package-0.1.0.tar.gz: PASSED
+```
+
+## Publishing to PyPI
+
+### TestPyPI First (Recommended)
+
+Always test on [TestPyPI](https://test.pypi.org) before the real PyPI:
+
+```bash
+# Publish to TestPyPI
+uv publish --publish-url https://test.pypi.org/legacy/ dist/*
+
+# Or with twine
+twine upload --repository testpypi dist/*
+
+# Install from TestPyPI to verify
+pip install --index-url https://test.pypi.org/simple/ my-package
+```
+
+### Production PyPI
+
+```bash
+# Publish to PyPI
+uv publish dist/*
+
+# Or with twine
+twine upload dist/*
+```
+
+:::tip API Tokens vs Passwords
+Use **API tokens** instead of passwords for publishing:
+1. Go to [pypi.org/manage/account/token](https://pypi.org/manage/account/token/)
+2. Create a token scoped to your project
+3. Use it as the password with `__token__` as the username
+
+```bash
+# Set credentials via environment variables
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD=pypi-xxxx...
+
+# Or configure uv
+export UV_PUBLISH_TOKEN=pypi-xxxx...
+```
+:::
+
+## Automated Release with GitHub Actions
+
+Create a fully automated release pipeline that builds and publishes on tag push:
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write  # Required for trusted publishing
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev]" --system
+
+      - name: Run tests
+        run: pytest --cov=my_package
+
+      - name: Type check
+        run: mypy src/
+
+      - name: Lint
+        run: ruff check src/
+
+  build-and-publish:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package
+        run: uv tool run twine check dist/*
+
+      - name: Publish to PyPI
+        run: uv publish
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*
+```
+
+## Trusted Publishing (OIDC)
+
+The most secure way to publish is **Trusted Publishing** — no API tokens needed:
+
+1. Go to your PyPI project settings → Publishing → Add a new publisher
+2. Select "GitHub" and fill in: owner, repository, workflow filename, environment name
+3. In your GitHub Actions workflow, set `permissions: id-token: write`
+4. Use `uv publish` without any credentials — it auto-authenticates via OIDC
+
+```yaml
+# The key parts for trusted publishing:
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi  # Must match the environment in PyPI settings
+    permissions:
+      id-token: write  # Required for OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv build
+      - run: uv publish  # No token needed!
+```
+
+## Version Management
+
+### Semantic Versioning
+
+Follow [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`
+
+- **MAJOR**: Breaking changes (`1.x.x` → `2.0.0`)
+- **MINOR**: New features, backward compatible (`1.1.x` → `1.2.0`)
+- **PATCH**: Bug fixes (`1.1.0` → `1.1.1`)
+
+### Release Checklist
+
+```bash
+# 1. Update version in pyproject.toml or __init__.py
+# 2. Update CHANGELOG.md
+# 3. Commit and tag
+git add .
+git commit -m "chore: release v0.2.0"
+git tag v0.2.0
+git push origin main --tags
+
+# 4. GitHub Actions automatically:
+#    - Runs tests
+#    - Builds the package
+#    - Publishes to PyPI
+#    - Creates a GitHub Release
+
+# 5. Verify on PyPI
+open https://pypi.org/project/my-package/0.2.0/
+```
+
+### Changelog Template
+
+```markdown
+# Changelog
+
+## v0.2.0 (2025-04-15)
+
+### Added
+- New `process_batch()` function for batch processing
+- Support for async API calls
+
+### Changed
+- Improved error messages with more context
+- Updated minimum Python version to 3.11
+
+### Fixed
+- Fixed timeout handling in long-running requests (#42)
+
+## v0.1.0 (2025-03-01)
+
+### Added
+- Initial release
+- Core processing functionality
+- CLI interface
+```
+
+:::info Pre-release Versions
+For testing before a stable release, use pre-release version suffixes:
+- Alpha: `0.2.0a1` (early testing)
+- Beta: `0.2.0b1` (feature complete, may have bugs)
+- Release Candidate: `0.2.0rc1` (ready for release, final testing)
+
+Users won't get pre-releases by default with `pip install my-package` unless they specify `--pre`.
+:::
+
+:::warning Security Best Practices
+- **Never** commit API tokens to git
+- Use GitHub Secrets for sensitive credentials
+- Prefer Trusted Publishing (OIDC) over API tokens
+- Enable 2FA on your PyPI account
+- Regularly rotate any API tokens you use
+:::
+
+
+

@@ -1,0 +1,34 @@
+---
+title: "Lab 16: Guardrails + Red-Team Regression"
+description: Add guardrails to an LLM app and prove they work with a red-team suite in CI.
+sidebar_position: 16
+---
+
+# Lab 16: Guardrails + Red-Team Regression
+
+**Difficulty:** Advanced · **Estimated time:** ~3–6 hours
+
+## Objective
+
+Harden an LLM app (RAG chatbot or agent) with guardrails and prove the hardening works:
+
+- implement guardrails (NeMo or equivalent)
+- build a red-team suite
+- run it in CI as regression tests
+
+## Requirements
+
+- At least 20 attacks (prompt injection, exfiltration, tool misuse)
+- A pass/fail report artifact
+- Document 3 mitigations and show before/after
+
+## Deliverables
+
+- `guardrails/` config
+- `redteam/` harness + attacks
+- `REPORT.md` with before/after results
+
+## Related reading
+
+- [Week 8: NeMo Guardrails](../week-8/nemo-guardrails)
+- [Week 8: OpenClaw / LLM Red-Teaming](../week-8/openclaw-red-teaming)

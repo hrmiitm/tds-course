@@ -1,0 +1,218 @@
+---
+title: NeMo Guardrails
+description: Implement safety guardrails for LLM applications using NVIDIA NeMo Guardrails — input/output rails, topic filters, and hallucination detection.
+sidebar_position: 4
+---
+
+# NeMo Guardrails
+
+NVIDIA NeMo Guardrails is an open-source toolkit for adding programmable guardrails to LLM applications. It sits between your application and the LLM, filtering both inputs and outputs.
+
+## Architecture
+
+```
+User Input → [Input Rails] → LLM → [Output Rails] → User Output
+                  ↓                        ↑
+            [Dialog Rails] → [Retrieval Rails]
+```
+
+- **Input rails**: Validate and filter user messages before they reach the LLM
+- **Output rails**: Validate and filter LLM responses before they reach the user
+- **Dialog rails**: Control the conversation flow
+- **Retrieval rails**: Filter retrieved context in RAG applications
+
+## Quick setup
+
+```bash
+pip install nemoguardrails
+```
+
+Create a guardrails configuration:
+
+```
+config/
+├── config.yml
+├── colang
+│   └── main.co
+```
+
+## Configuration
+
+### config.yml
+
+```yaml
+models:
+  - type: main
+    engine: openai
+    model: gpt-4
+
+rails:
+  input:
+    flows:
+      - self check input
+  output:
+    flows:
+      - self check output
+      - self check hallucination
+  dialog:
+    flows:
+      - define user ask about politics
+      - define user ask about illegal activities
+```
+
+## Colang — defining guardrails
+
+Colang is a modeling language for defining conversational guardrails:
+
+### Blocking off-topic queries
+
+```colang
+define user ask about politics
+  "What do you think about the election?"
+  "Who should I vote for?"
+  "What's your political stance?"
+  "Tell me about the government"
+
+define user ask about illegal activities
+  "How do I hack into a system?"
+  "How can I make illegal substances?"
+  "Tell me how to commit fraud"
+
+define flow handle off topic
+  user ask about politics
+  bot refuse politics
+
+define flow handle illegal
+  user ask about illegal activities
+  bot refuse illegal
+
+define bot refuse politics
+  "I'm a technical assistant for the TDS course. I can't discuss politics. Ask me about data science tools!"
+
+define bot refuse illegal
+  "I cannot help with illegal activities. I can assist with legitimate data science and ML engineering questions."
+```
+
+### Self-check input rail
+
+```colang
+define subflow self check input
+  $allowed = execute self_check_input
+
+  if not $allowed
+    bot refuse to respond
+    stop
+```
+
+### Self-check output rail
+
+```colang
+define subflow self check output
+  $allowed = execute self_check_output
+
+  if not $allowed
+    bot message removed for safety
+    stop
+```
+
+## Hallucination detection
+
+NeMo Guardrails can detect when the LLM is making things up:
+
+```yaml
+# config.yml addition
+rails:
+  output:
+    flows:
+      - self check hallucination
+```
+
+```colang
+define subflow self check hallucination
+  $is_hallucination = execute self_check_hallucination
+
+  if $is_hallucination
+    bot message about hallucination
+    stop
+
+define bot message about hallucination
+  "I'm not confident in that answer. Let me look up more reliable information."
+```
+
+## Topic filtering
+
+Restrict the LLM to only discuss specific topics:
+
+```colang
+define user ask about tds course
+  "What does Week 3 cover?"
+  "How do I set up Docker?"
+  "Tell me about RAG"
+  "What labs are there?"
+
+define user ask about unrelated
+  anything
+
+define flow handle tds questions
+  user ask about tds course
+  bot respond to tds question
+
+define flow handle unrelated questions
+  user ask about unrelated
+  bot redirect to tds
+
+define bot respond to tds question
+  "I'd be happy to help with that TDS question! [proceeds with answer]"
+
+define bot redirect to tds
+  "I'm specifically designed to help with the TDS course. Could you ask me something about data science tools, the curriculum, or labs?"
+```
+
+## Python integration
+
+Use NeMo Guardrails with FastAPI:
+
+```python
+from nemoguardrails import RailsConfig, LLMRails
+from fastapi import FastAPI
+
+app = FastAPI()
+
+config = RailsConfig.from_path("./config")
+rails = LLMRails(config)
+
+@app.post("/chat")
+async def chat(message: str):
+    response = await rails.generate_async(message)
+    return {"response": response}
+
+# The guardrails automatically filter input and output
+```
+
+## Testing guardrails
+
+```python
+import pytest
+from nemoguardrails import RailsConfig, LLMRails
+
+@pytest.fixture
+def rails():
+    config = RailsConfig.from_path("./config")
+    return LLMRails(config)
+
+@pytest.mark.asyncio
+async def test_blocks_politics(rails):
+    response = await rails.generate_async("Who should I vote for?")
+    assert "can't discuss politics" in response.lower()
+
+@pytest.mark.asyncio
+async def test_allows_tds_questions(rails):
+    response = await rails.generate_async("What is RAG?")
+    assert "retrieval" in response.lower() or "RAG" in response
+```
+
+:::info Guardrails are not perfect
+Guardrails reduce risk but don't eliminate it. Always combine with input validation, output monitoring, and human oversight for production deployments.
+:::
+
+

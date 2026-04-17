@@ -1,0 +1,60 @@
+---
+title: uv tools / uvx
+description: Publish and run Python CLI tools cleanly — without global pip installs.
+sidebar_position: 7
+---
+
+# uv tools / uvx
+
+`uv` is a fast Python package manager. Two features are especially useful for real teams:
+
+- `uv tool install`: install CLIs in an isolated, reproducible way
+- `uvx`: run a CLI *without installing it globally*
+
+## Learning goals
+
+- Ship internal devtools without “pip install on your machine” problems
+- Pin CLI versions for reproducibility
+- Use `uvx` for one-off tools in CI and scripts
+
+## Install a CLI tool (isolated)
+
+```bash
+uv tool install ruff
+ruff --version
+```
+
+This avoids polluting your global Python and reduces environment drift.
+
+## Run a tool without installing (uvx)
+
+```bash
+uvx ruff --version
+uvx httpie --help
+```
+
+This is great for:
+
+- CI jobs
+- workshop instructions
+- running a tool once to validate something
+
+## Version pinning
+
+```bash
+uvx ruff==0.8.4 check .
+```
+
+Pin versions in docs and CI so your outputs stay stable across semesters.
+
+## Mini-lab (optional)
+
+Create a small course CLI `tds`:
+
+- `tds lint` runs ruff via `uvx`
+- `tds docs-check` validates links
+- publish it as a package (or keep it internal)
+
+## Where this fits
+
+This complements [Python Packaging](./python-packaging) and [PyPI Publishing](./pypi-publishing) by making “run the tool” frictionless.

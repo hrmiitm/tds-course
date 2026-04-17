@@ -1,0 +1,113 @@
+.window {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--tds-border);
+  background: var(--tds-surface-secondary);
+  box-shadow: var(--tds-shadow-sm);
+  margin: 16px 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.02));
+  border-bottom: 1px solid var(--tds-border);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.dotRed {
+  background: #ff5f57;
+}
+
+.dotYellow {
+  background: #febc2e;
+}
+
+.dotGreen {
+  background: #28c840;
+}
+
+.headerTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tds-text-secondary);
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.actionBtn {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--tds-border);
+  background: var(--tds-surface);
+  color: var(--tds-text-secondary);
+  cursor: pointer;
+}
+
+.actionBtn:hover {
+  color: var(--tds-text-primary);
+  border-color: rgba(var(--ifm-color-primary-rgb, 59, 130, 246), 0.6);
+}
+
+.body {
+  position: relative;
+}
+
+/* Collapse logic: limit the height of the underlying code container */
+.collapsed :global(pre) {
+  max-height: calc(1.45em * 8 + 24px);
+  overflow: hidden;
+}
+
+.fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(248, 249, 250, 0), rgba(248, 249, 250, 1));
+}
+
+:global([data-theme='dark']) .fade {
+  background: linear-gradient(to bottom, rgba(36, 36, 36, 0), rgba(36, 36, 36, 1));
+}
+
+/* Wrap toggle */
+.wrap :global(pre),
+.wrap :global(code) {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Reduce nested container padding so our window looks tidy */
+:global(.theme-code-block) {
+  box-shadow: none;
+}

@@ -1,0 +1,44 @@
+---
+title: "Lab 11: Prompt Caching & Cost Benchmarks"
+description: Implement a safe prompt/response cache and quantify the cost+latency wins.
+sidebar_position: 11
+---
+
+# Lab 11: Prompt Caching & Cost Benchmarks
+
+**Difficulty:** Intermediate · **Estimated time:** ~2–3 hours
+
+## Objective
+
+Implement caching for an LLM feature (CLI or API) and report measured improvements.
+
+## Requirements
+
+- A cache key that includes: model, prompt_version, normalized input
+- A cache invalidation strategy (version bump or TTL)
+- Print metrics: cache hit rate + p50 latency + token deltas
+
+## Suggested build
+
+Create a CLI:
+
+```bash
+tds-ask "Explain hybrid search"
+```
+
+- first run: cache miss, hits the model
+- second run: cache hit, returns instantly
+
+## Deliverables
+
+- `cache.py` (SQLite or similar)
+- `ask.py` (the CLI)
+- `REPORT.md` with:
+  - methodology
+  - cache hit rate
+  - latency numbers
+  - what you chose not to cache (and why)
+
+## Related reading
+
+- [Week 3: Prompt Caching](../week-3/prompt-caching)

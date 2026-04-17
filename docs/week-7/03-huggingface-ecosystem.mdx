@@ -1,0 +1,275 @@
+---
+title: HuggingFace Ecosystem
+description: Navigate the HuggingFace ecosystem — Datasets, Transformers, PEFT, and TRL for loading data, training models, and efficient finetuning.
+sidebar_position: 3
+---
+
+# HuggingFace Ecosystem
+
+HuggingFace is the **GitHub of machine learning**. It hosts models, datasets, and spaces (demo apps), and provides the Python libraries that power most modern ML workflows. This page covers the four core libraries you'll use throughout this course.
+
+## HuggingFace Hub
+
+The Hub hosts 500K+ models and 100K+ datasets. Every model page includes:
+- Model card (description, usage, limitations)
+- Inference API (try it in the browser)
+- Files and versions
+- Community discussions
+
+```bash
+# Install the HuggingFace CLI
+pip install huggingface_hub
+
+# Login (needed for private models and uploading)
+huggingface-cli login
+
+# Download a model
+huggingface-cli download meta-llama/Llama-3.2-1B
+
+# Upload your model
+huggingface-cli upload my-username/my-model ./model-dir
+```
+
+## Transformers Library
+
+The `transformers` library is the foundation — it provides a unified API for loading and using models from any framework.
+
+### Loading and Using Models
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+# Load a model and tokenizer
+model_name = "google/gemma-2-2b"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.float16,
+    device_map="auto",  # Automatically distribute across GPUs
+)
+
+# Generate text
+inputs = tokenizer("The key to building great AI systems is", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=100, temperature=0.7, do_sample=True)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### Using the Pipeline API
+
+For quick prototyping, the pipeline API handles preprocessing and postprocessing:
+
+```python
+from transformers import pipeline
+
+# Sentiment analysis
+classifier = pipeline("sentiment-analysis")
+result = classifier("This course is amazing!")
+print(result)  # [{'label': 'POSITIVE', 'score': 0.9998}]
+
+# Text generation
+generator = pipeline("text-generation", model="gpt2")
+result = generator("In the future, AI will", max_length=50, num_return_sequences=3)
+
+# Question answering
+qa = pipeline("question-answering")
+result = qa(question="What is QLoRA?", context="QLoRA is a finetuning method...")
+
+# Summarization
+summarizer = pipeline("summarization")
+result = summarizer(long_article, max_length=130, min_length=30)
+
+# Image classification
+vision = pipeline("image-classification")
+result = vision("photo.jpg")
+```
+
+### Chat Templates
+
+Modern models use chat templates to format conversations:
+
+```python
+# Apply chat template
+messages = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Explain quantum computing in 3 sentences."},
+]
+
+input_text = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True,
+)
+print(input_text)
+# Output varies by model — Gemma, Llama, Mistral each have different formats
+
+inputs = tokenizer(input_text, return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=200)
+response = tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
+```
+
+## Datasets Library
+
+The `datasets` library provides efficient data loading with built-in streaming, caching, and processing.
+
+### Loading Datasets
+
+```python
+from datasets import load_dataset
+
+# From HuggingFace Hub
+dataset = load_dataset("imdb")  # Sentiment analysis
+dataset = load_dataset("squad")  # Question answering
+
+# From local files
+dataset = load_dataset("csv", data_files="my_data.csv")
+dataset = load_dataset("json", data_files="my_data.jsonl")
+
+# Streaming (for very large datasets — doesn't download everything)
+dataset = load_dataset("cerebras/SlimPajama-627B", streaming=True)
+for i, example in enumerate(dataset["train"]):
+    if i >= 100:
+        break
+    print(example["text"][:100])
+```
+
+### Processing and Transforming
+
+```python
+# Load a dataset
+dataset = load_dataset("imdb")
+
+# Filter examples
+short_reviews = dataset["train"].filter(lambda x: len(x["text"]) < 500)
+
+# Map a function over all examples
+def tokenize_function(example):
+    return tokenizer(example["text"], truncation=True, padding="max_length", max_length=512)
+
+tokenized = dataset.map(tokenize_function, batched=True)
+
+# Create train/validation split if not present
+if "validation" not in dataset:
+    split = dataset["train"].train_test_split(test_size=0.1, seed=42)
+    dataset = datasets.DatasetDict({
+        "train": split["train"],
+        "test": dataset["test"],
+        "validation": split["test"],
+    })
+
+# Convert to pandas DataFrame for analysis
+df = dataset["train"].to_pandas()
+print(df.head())
+```
+
+### Creating and Uploading Datasets
+
+```python
+from datasets import Dataset, DatasetDict
+
+# Create from a dictionary
+my_data = {
+    "text": ["Example 1", "Example 2", "Example 3"],
+    "label": [0, 1, 0],
+}
+dataset = Dataset.from_dict(my_data)
+
+# Create from a list of dicts
+records = [
+    {"instruction": "Summarize", "input": "Long text...", "output": "Summary..."},
+    {"instruction": "Translate", "input": "Hello", "output": "Hola"},
+]
+dataset = Dataset.from_list(records)
+
+# Push to Hub
+dataset.push_to_hub("my-username/my-dataset")
+```
+
+## PEFT (Parameter-Efficient Fine-Tuning)
+
+PEFT enables finetuning large models by training only a small number of additional parameters.
+
+```python
+from peft import LoraConfig, get_peft_model, TaskType
+
+# Configure LoRA
+lora_config = LoraConfig(
+    task_type=TaskType.CAUSAL_LM,
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    bias="none",
+)
+
+# Apply LoRA to model
+model = AutoModelForCausalLM.from_pretrained(
+    "google/gemma-2-2b",
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+model = get_peft_model(model, lora_config)
+
+# Print trainable parameters
+model.print_trainable_parameters()
+# Output: trainable params: 19,595,776 || all params: 2,614,598,656 || trainable%: 0.7491%
+
+# After training, save only the adapter
+model.save_pretrained("my-lora-adapter")
+
+# Load the adapter later
+from peft import PeftModel
+base_model = AutoModelForCausalLM.from_pretrained("google/gemma-2-2b")
+model = PeftModel.from_pretrained(base_model, "my-lora-adapter")
+
+# Merge adapter into base model for deployment
+merged_model = model.merge_and_unload()
+merged_model.save_pretrained("my-merged-model")
+```
+
+## TRL (Transformer Reinforcement Learning)
+
+TRL provides training utilities specifically for language models, including SFT (Supervised Fine-Tuning) and DPO (Direct Preference Optimization).
+
+```python
+from trl import SFTTrainer, SFTConfig
+
+# Supervised Fine-Tuning
+trainer = SFTTrainer(
+    model=model,
+    train_dataset=tokenized_dataset,
+    args=SFTConfig(
+        output_dir="./results",
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=4,
+        num_train_epochs=3,
+        learning_rate=2e-4,
+        logging_steps=10,
+        save_steps=500,
+        bf16=True,
+        max_seq_length=2048,
+        packing=True,  # Pack short examples together for efficiency
+    ),
+)
+
+trainer.train()
+```
+
+:::tip Library Selection Guide
+- **transformers**: Always needed — load models and tokenize inputs
+- **datasets**: For loading, processing, and creating training data
+- **peft**: For LoRA/QLoRA finetuning (reduces memory from 28GB → 6GB)
+- **trl**: For SFTTrainer and DPO — higher-level training loops
+- **accelerate**: For multi-GPU and distributed training
+:::
+
+:::warning Version Compatibility
+HuggingFace libraries evolve rapidly. Pin versions in production:
+```bash
+pip install transformers==4.46.0 peft==0.13.2 trl==0.12.0 datasets==3.1.0
+```
+Check the [compatibility matrix](https://github.com/huggingface/peft#compatibility) before upgrading.
+:::
+
+
+

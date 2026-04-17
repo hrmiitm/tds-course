@@ -1,0 +1,174 @@
+---
+title: uv & Python
+description: Manage Python projects with uv — creating projects, lockfiles, scripts, and packages
+sidebar_position: 2
+---
+
+# uv & Python
+
+[uv](https://docs.astral.sh/uv/) is an extremely fast Python package manager written in Rust. It replaces `pip`, `pip-tools`, `virtualenv`, and `pyenv` with a single unified tool. In this course, we use `uv` exclusively for Python environment management.
+
+## Installing uv
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Verify installation
+uv --version
+```
+
+:::tip uv replaces multiple tools
+Think of `uv` as a faster replacement for `pip` + `virtualenv` + `pip-tools` + `pyenv`. You do not need any of those installed separately.
+:::
+
+## Creating a New Project
+
+A `uv` project is a directory with a `pyproject.toml` and a `.venv` virtual environment:
+
+```bash
+# Create a new project in the current directory
+uv init my-data-project
+cd my-data-project
+
+# This creates:
+# ├── .python-version      # Python version pin
+# ├── pyproject.toml        # Project metadata and dependencies
+# ├── uv.lock               # Lockfile (created after first sync)
+# ├── hello.py              # Starter script
+# └── .venv/                # Virtual environment
+```
+
+The generated `pyproject.toml` looks like this:
+
+```toml
+[project]
+name = "my-data-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+```
+
+## Adding and Removing Dependencies
+
+```bash
+# Add a dependency
+uv add pandas
+uv add "scikit-learn>=1.5"
+
+# Add a dev dependency (linters, test frameworks)
+uv add --dev pytest ruff
+
+# Remove a dependency
+uv remove pandas
+
+# Install all dependencies from the lockfile
+uv sync
+```
+
+Every time you add or remove a dependency, `uv` automatically updates `pyproject.toml` **and** `uv.lock`. The lockfile ensures reproducible installs — anyone running `uv sync` gets the exact same versions.
+
+:::warning Always commit uv.lock
+The `uv.lock` file should always be committed to version control. It guarantees that every developer and every CI pipeline installs identical dependency versions. Do not add it to `.gitignore`.
+:::
+
+## Scripts vs Packages
+
+`uv` supports two modes of Python execution:
+
+### One-off Scripts
+
+For quick scripts that are not part of a formal project, use `uv run` with inline dependency metadata:
+
+```python
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["requests", "rich"]
+# ///
+import requests
+from rich import print
+
+resp = requests.get("https://api.github.com/repos/astral-sh/uv")
+data = resp.json()
+print(f"[bold green]{data['full_name']}[/] has {data['stargazers_count']:,} stars")
+```
+
+Run it with:
+
+```bash
+uv run fetch-stats.py
+# uv automatically creates a temporary environment and installs the dependencies
+```
+
+### Formal Packages
+
+For reusable libraries and applications, use the project structure with `pyproject.toml`:
+
+```bash
+# Run the project's entry point
+uv run python -m my_data_project
+
+# Or define a script entry point in pyproject.toml:
+# [project.scripts]
+# analyze = "my_data_project.cli:main"
+# Then run:
+uv run analyze
+```
+
+## Managing Python Versions
+
+```bash
+# List available Python versions
+uv python list
+
+# Install a specific version
+uv python install 3.11
+
+# Pin the project to a specific version
+uv python pin 3.12
+
+# The .python-version file records this choice
+```
+
+## Lockfile Deep Dive
+
+The `uv.lock` file is a cross-platform lockfile that records the exact version and hash of every dependency:
+
+```bash
+# Generate/update the lockfile without installing
+uv lock
+
+# Check if the lockfile is up to date
+uv lock --check
+
+# Export to requirements.txt (for legacy tools)
+uv export --format requirements-txt > requirements.txt
+```
+
+:::info Why lockfiles matter
+Without a lockfile, `pip install pandas` might install pandas 2.2.0 today and pandas 2.3.0 next month. If pandas 2.3.0 introduces a breaking change, your code breaks. Lockfiles pin exact versions so this never happens.
+:::
+
+## Common Workflows
+
+```bash
+# Start a new data analysis project
+uv init analysis && cd analysis
+uv add pandas matplotlib jupyter
+uv run jupyter lab
+
+# Run a quick script with dependencies
+uv run --with httpx --with rich script.py
+
+# Build a distributable package
+uv build
+# Produces dist/my_data_project-0.1.0-py3-none-any.whl
+```
+
+
+

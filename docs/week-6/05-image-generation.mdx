@@ -1,0 +1,273 @@
+---
+title: Image Generation
+description: Generate images with AI — Stable Diffusion XL, FLUX, and ControlNet for controllable, high-quality image creation.
+sidebar_position: 5
+---
+
+# Image Generation
+
+AI image generation has evolved rapidly. This page covers three key approaches: **SDXL** (Stable Diffusion XL) for general-purpose generation, **FLUX** for state-of-the-art quality, and **ControlNet** for precise control over the generated output.
+
+## Stable Diffusion XL (SDXL)
+
+SDXL is Stability AI's flagship open-source image generation model. It produces 1024×1024 images and supports refinement through a second-stage refiner model.
+
+### Running with Diffusers
+
+```python
+import torch
+from diffusers import StableDiffusionXLPipeline
+
+# Load the pipeline
+pipe = StableDiffusionXLPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    torch_dtype=torch.float16,
+    variant="fp16",
+    use_safetensors=True,
+)
+pipe.to("cuda")
+
+# Optional: enable memory optimizations
+pipe.enable_vae_slicing()      # Reduces memory for batch generation
+pipe.enable_xformers_memory_efficient_attention()
+
+# Generate an image
+image = pipe(
+    prompt="A serene mountain landscape at sunset, digital art, highly detailed",
+    negative_prompt="blurry, low quality, distorted, watermark",
+    num_inference_steps=30,
+    guidance_scale=7.5,
+    width=1024,
+    height=1024,
+).images[0]
+
+image.save("mountain_sunset.png")
+```
+
+### Two-Stage Refinement
+
+```python
+from diffusers import StableDiffusionXLRefinerPipeline
+
+# Load base and refiner
+base = StableDiffusionXLPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    torch_dtype=torch.float16,
+    variant="fp16",
+).to("cuda")
+
+refiner = StableDiffusionXLRefinerPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-refiner-1.0",
+    torch_dtype=torch.float16,
+    variant="fp16",
+).to("cuda")
+
+# Generate with base, then refine
+prompt = "A futuristic city with flying cars, cyberpunk style"
+
+# Stage 1: Base model generates low-noise latent
+image = base(
+    prompt=prompt,
+    num_inference_steps=40,
+    denoising_end=0.8,  # Stop at 80% denoising
+    output_type="latent",
+).images
+
+# Stage 2: Refiner adds high-frequency details
+image = refiner(
+    prompt=prompt,
+    num_inference_steps=20,
+    denoising_start=0.8,  # Continue from 80%
+    image=image,
+).images[0]
+
+image.save("futuristic_city.png")
+```
+
+## FLUX
+
+[FLUX](https://blackforestlabs.ai/) by Black Forest Labs (from the creators of Stable Diffusion) represents the current state-of-the-art in open-source image generation. It excels at text rendering, anatomical accuracy, and prompt adherence.
+
+### FLUX.1-schnell (Fast)
+
+```python
+from diffusers import FluxPipeline
+
+pipe = FluxPipeline.from_pretrained(
+    "black-forest-labs/FLUX.1-schnell",
+    torch_dtype=torch.bfloat16,
+)
+pipe.to("cuda")
+
+image = pipe(
+    prompt="A neon sign reading 'OPEN 24/7' on a brick wall, photorealistic",
+    guidance_scale=0.0,  # FLUX schnell doesn't use guidance
+    num_inference_steps=4,  # Very fast — only 4 steps!
+    width=1024,
+    height=1024,
+).images[0]
+
+image.save("neon_sign.png")
+```
+
+### FLUX.1-dev (Quality)
+
+```python
+from diffusers import FluxPipeline
+
+pipe = FluxPipeline.from_pretrained(
+    "black-forest-labs/FLUX.1-dev",
+    torch_dtype=torch.bfloat16,
+)
+pipe.to("cuda")
+
+image = pipe(
+    prompt="A detailed oil painting of a scholar reading in a library, warm lighting, Renaissance style",
+    guidance_scale=3.5,
+    num_inference_steps=50,
+    width=1024,
+    height=1024,
+).images[0]
+
+image.save("scholar_painting.png")
+```
+
+:::tip FLUX vs SDXL
+- **FLUX.1-schnell**: Best for rapid iteration (4 steps!), great prompt adherence
+- **FLUX.1-dev**: Best quality, excellent text rendering, anatomical accuracy
+- **SDXL**: More community models/LoRAs available, wider ecosystem
+- Choose FLUX for quality, SDXL for ecosystem/community support
+:::
+
+## ControlNet
+
+ControlNet adds **spatial control** to diffusion models. Instead of relying solely on text prompts, you provide structural guidance — edges, depth maps, poses, or sketches — and the model generates images that follow that structure.
+
+### Canny Edge Control
+
+```python
+import cv2
+import numpy as np
+from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
+from PIL import Image
+
+# Load ControlNet for Canny edge detection
+controlnet = ControlNetModel.from_pretrained(
+    "diffusers/controlnet-canny-sdxl-1.0",
+    torch_dtype=torch.float16,
+    variant="fp16",
+).to("cuda")
+
+pipe = StableDiffusionXLControlNetPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    controlnet=controlnet,
+    torch_dtype=torch.float16,
+    variant="fp16",
+).to("cuda")
+
+# Prepare control image (Canny edges)
+input_image = cv2.imread("input_photo.jpg")
+input_image = cv2.resize(input_image, (1024, 1024))
+canny_image = cv2.Canny(input_image, 100, 200)
+canny_image = Image.fromarray(canny_image)
+
+# Generate image following the edge structure
+image = pipe(
+    prompt="A majestic castle on a cliff, fantasy art, dramatic lighting",
+    negative_prompt="low quality, blurry, distorted",
+    image=canny_image,
+    num_inference_steps=30,
+    guidance_scale=7.5,
+    controlnet_conditioning_scale=0.8,  # How strongly to follow edges
+).images[0]
+
+image.save("castle_from_edges.png")
+```
+
+### Depth Map Control
+
+```python
+from transformers import pipeline as hf_pipeline
+from diffusers import ControlNetModel, StableDiffusionXLControlNetPipeline
+
+# Generate depth map from an image
+depth_estimator = hf_pipeline("depth-estimation")
+
+def get_depth_map(image_path: str) -> Image.Image:
+    """Generate a depth map from an image."""
+    image = Image.open(image_path).resize((1024, 1024))
+    depth = depth_estimator(image)
+    depth_map = depth["depth"]
+    depth_map = depth_map.resize((1024, 1024))
+    return depth_map
+
+# Load depth ControlNet
+controlnet = ControlNetModel.from_pretrained(
+    "diffusers/controlnet-depth-sdxl-1.0",
+    torch_dtype=torch.float16,
+).to("cuda")
+
+pipe = StableDiffusionXLControlNetPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0",
+    controlnet=controlnet,
+    torch_dtype=torch.float16,
+).to("cuda")
+
+# Generate with depth control
+depth_map = get_depth_map("room_photo.jpg")
+image = pipe(
+    prompt="A cozy living room with warm lighting and bookshelves",
+    image=depth_map,
+    num_inference_steps=30,
+    controlnet_conditioning_scale=0.9,
+).images[0]
+
+image.save("room_reimagined.png")
+```
+
+## API-Based Generation
+
+For production without GPU costs, use API services:
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+def generate_with_dalle(prompt: str, size: str = "1024x1024") -> str:
+    """Generate an image using DALL-E 3."""
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size=size,
+        quality="hd",
+        n=1,
+    )
+    return response.data[0].url
+
+# Usage
+url = generate_with_dalle("A data visualization dashboard showing ML model metrics")
+print(f"Image URL: {url}")
+```
+
+## Comparison of Approaches
+
+| Method | Quality | Speed | Control | Cost | Hardware |
+|--------|---------|-------|---------|------|----------|
+| SDXL | Good | Medium | Prompt only | Free (local) | 8GB+ VRAM |
+| SDXL + Refiner | Very Good | Slow | Prompt only | Free (local) | 12GB+ VRAM |
+| FLUX.1-schnell | Very Good | Fast | Prompt only | Free (local) | 12GB+ VRAM |
+| FLUX.1-dev | Excellent | Slow | Prompt only | Free (local) | 24GB+ VRAM |
+| SDXL + ControlNet | Good | Medium | High (spatial) | Free (local) | 12GB+ VRAM |
+| DALL-E 3 | Very Good | Fast | Prompt only | ~$0.04-0.12/img | None (API) |
+
+:::warning GPU Memory Management
+Image generation is memory-intensive. Use these techniques to fit larger models:
+- `pipe.enable_vae_slicing()` — process VAE in smaller chunks
+- `pipe.enable_model_cpu_offload()` — offload unused components to CPU
+- Use `torch.float16` or `torch.bfloat16` instead of `float32`
+- For FLUX-dev, you may need 24GB+ VRAM or CPU offloading
+:::
+
+
+

@@ -1,0 +1,214 @@
+---
+title: Function Calling
+description: Give LLMs access to external tools — function calling, parallel tools, and tool choice
+sidebar_position: 4
+---
+
+# Function Calling
+
+Function calling (also called "tool use") lets LLMs interact with the outside world. Instead of just generating text, the model can decide to call functions you define — fetching data, running calculations, or triggering actions. This is the foundation for building AI agents.
+
+## How Function Calling Works
+
+```
+User → LLM → "I need to call get_weather(city='London')"
+                ↓
+         Your code runs get_weather("London")
+                ↓
+         Result → LLM → Final answer to user
+```
+
+The LLM does **not** execute code. It outputs a structured function call, and your code executes it and returns the result.
+
+## Defining Tools
+
+```python
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+# Define the tools the model can use
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a city",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "City name, e.g. 'London'"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "Temperature unit"
+                    }
+                },
+                "required": ["city"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_database",
+            "description": "Search a product database by name or category",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "category": {"type": "string", "description": "Product category filter"},
+                    "limit": {"type": "integer", "description": "Max results", "default": 10}
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+```
+
+## Executing Tool Calls
+
+```python
+# Implement the actual functions
+def get_weather(city: str, unit: str = "celsius") -> dict:
+    """In production, call a real weather API."""
+    return {
+        "city": city,
+        "temperature": 18 if unit == "celsius" else 64,
+        "condition": "Partly cloudy",
+        "humidity": 65
+    }
+
+def search_database(query: str, category: str = None, limit: int = 10) -> dict:
+    """In production, query a real database."""
+    results = [
+        {"name": "Widget Pro", "price": 29.99, "category": "Gadgets"},
+        {"name": "Widget Mini", "price": 19.99, "category": "Gadgets"},
+    ]
+    return {"results": results, "count": len(results)}
+
+# Map function names to implementations
+available_functions = {
+    "get_weather": get_weather,
+    "search_database": search_database,
+}
+
+def run_conversation(messages: list) -> str:
+    """Run a conversation with tool calling."""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        tools=tools,
+    )
+
+    message = response.choices[0].message
+
+    # If no tool calls, return the response directly
+    if not message.tool_calls:
+        return message.content
+
+    # Process each tool call
+    messages.append(message)
+
+    for tool_call in message.tool_calls:
+        function_name = tool_call.function.name
+        function_args = json.loads(tool_call.function.arguments)
+
+        # Call the function
+        result = available_functions[function_name](**function_args)
+
+        # Append the result
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": json.dumps(result)
+        })
+
+    # Get the final response
+    final_response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        tools=tools,
+    )
+
+    return final_response.choices[0].message.content
+
+# Usage
+answer = run_conversation([
+    {"role": "user", "content": "What's the weather in London and do you have any widgets?"}
+])
+print(answer)
+```
+
+## Parallel Tool Calling
+
+GPT-4o supports calling multiple tools in a single response:
+
+```python
+# The model might return multiple tool_calls in one response
+# The code above already handles this with the for loop over message.tool_calls
+
+# Example: User asks "Compare weather in London and Tokyo"
+# Model returns:
+# tool_calls[0]: get_weather(city="London")
+# tool_calls[1]: get_weather(city="Tokyo")
+# Both are executed before the final response
+```
+
+:::tip Parallel calls reduce latency
+When the model needs multiple independent pieces of information, it calls all tools in parallel. This is much faster than sequential calls. The model decides automatically — you don't need to configure anything.
+:::
+
+## Tool Choice
+
+Control when the model uses tools:
+
+```python
+# Auto: Model decides whether to use tools (default)
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=tools,
+    tool_choice="auto",
+)
+
+# Required: Model MUST call a tool
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=tools,
+    tool_choice="required",
+)
+
+# Specific tool: Model must call a specific tool
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=tools,
+    tool_choice={"type": "function", "function": {"name": "get_weather"}},
+)
+
+# None: Model must NOT call any tool
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=tools,
+    tool_choice="none",
+)
+```
+
+:::warning Security: Validate tool arguments
+Never trust LLM-generated arguments blindly. Validate them before executing:
+- Check types and ranges
+- Sanitize SQL queries if your tool accesses a database
+- Rate-limit tool calls to prevent infinite loops
+- Never give tools destructive capabilities without confirmation
+:::
+
+
+
