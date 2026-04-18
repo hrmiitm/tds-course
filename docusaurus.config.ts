@@ -138,33 +138,6 @@ const config: Config = {
         },
       ],
     },
-    footer: {
-      style: 'dark',
-      links: [
-        {
-          title: 'Course',
-          items: [
-            { label: 'Introduction', to: '/intro' },
-            { label: 'Week 1', to: '/week-1' },
-            { label: 'Labs', to: '/labs' },
-          ],
-        },
-        {
-          title: 'IIT Madras',
-          items: [
-            { label: 'Course Portal', href: 'https://study.iitm.ac.in' },
-            { label: 'Discourse Forum', href: 'https://discourse.onlinedegree.iitm.ac.in' },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            { label: 'GitHub', href: 'https://github.com/iit-madras/tds-course' },
-          ],
-        },
-      ],
-      copyright: `© ${new Date().getFullYear()} IIT Madras Online Degree Programme. Content under CC BY 4.0.`,
-    },
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
