@@ -563,6 +563,9 @@ tr:hover td {
   .footer,
   .theme-doc-sidebar-container,
   .theme-doc-toc-desktop,
+  .theme-doc-breadcrumbs,
+  .theme-edit-this-page,
+  .theme-last-updated,
   .pagination-nav,
   .theme-doc-footer,
   .toc-toggle-btn,
@@ -575,8 +578,20 @@ tr:hover td {
     padding-top: 0 !important;
   }
 
+  .main-wrapper main,
+  .theme-doc-markdown,
+  article {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
   .container {
     max-width: 100% !important;
+  }
+
+  .theme-doc-markdown > :first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   /* Avoid awkward breaks */

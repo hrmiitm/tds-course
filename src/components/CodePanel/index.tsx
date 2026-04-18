@@ -519,6 +519,9 @@ function CodePanelInner() {
       setIsResizing(true);
 
       const onMove = (ev: MouseEvent | TouchEvent) => {
+        if ('touches' in ev && ev.cancelable) {
+          ev.preventDefault();
+        }
         const pt = 'touches' in ev ? ev.touches[0] : ev;
         const dx = pt.clientX - resizeStart.current.x;
         const dy = pt.clientY - resizeStart.current.y;
@@ -559,14 +562,20 @@ function CodePanelInner() {
         setIsResizing(false);
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('mouseleave', onEnd);
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onEnd);
+        window.removeEventListener('blur', onEnd);
       };
 
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onEnd);
+      document.addEventListener('mouseleave', onEnd);
       document.addEventListener('touchmove', onMove, { passive: false } as EventListenerOptions);
       document.addEventListener('touchend', onEnd);
+      document.addEventListener('touchcancel', onEnd);
+      window.addEventListener('blur', onEnd);
     },
     [computedDims]
   );
