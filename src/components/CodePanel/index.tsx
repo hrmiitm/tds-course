@@ -9,8 +9,6 @@ import {
   Wifi,
   WifiOff,
   Monitor,
-
-  Globe,
   Link2,
   Sun,
   Moon,
@@ -28,7 +26,8 @@ import {
 /* ---------- Types ---------- */
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-type ConnectionType = 'localhost' | 'codespaces' | 'custom';
+type ConnectionType = 'localhost' | 'custom';
+type StoredConnectionType = ConnectionType | 'codespaces';
 type DockMode = 'floating' | 'bottom' | 'right';
 
 interface StoredDimensions {
@@ -39,18 +38,11 @@ interface StoredDimensions {
 }
 
 interface StoredConnection {
-  type: ConnectionType;
+  type: StoredConnectionType;
   url: string;
   port?: string;
 }
 
-type Codespace = {
-  name: string;
-  display_name?: string;
-  state?: string;
-  web_url?: string;
-  repository?: { full_name?: string };
-};
 
 /* ---------- Constants ---------- */
 
@@ -58,6 +50,7 @@ const STORAGE_KEY_URL = 'tds_terminal_last_connection';
 const STORAGE_KEY_DIMS = 'tds_terminal_dimensions';
 const STORAGE_KEY_OPACITY = 'tds_terminal_opacity';
 const STORAGE_KEY_DOCK = 'tds_terminal_dock_mode';
+const STORAGE_KEY_BACKDROP = 'tds_terminal_backdrop_blur';
 
 const PANEL_MARGIN = 12;
 
@@ -120,11 +113,6 @@ function detectConnectionType(url: string): ConnectionType {
   try {
     const u = new URL(url);
     if (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) return 'localhost';
-    if (
-      u.hostname.endsWith('try.github.dev') ||
-      u.hostname.endsWith('.github.dev')
-    )
-      return 'codespaces';
     return 'custom';
   } catch {
     return 'custom';
@@ -139,7 +127,6 @@ function buildUrl(type: ConnectionType, raw: string, port?: string): string {
   switch (type) {
     case 'localhost':
       return buildLocalhostUrl(port || '8080');
-    case 'codespaces':
     case 'custom':
       return raw.trim();
   }
@@ -156,6 +143,7 @@ function CodePanelInner() {
   const [connectedUrl, setConnectedUrl] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [opacity, setOpacity] = useState(() => safeGetNumber(STORAGE_KEY_OPACITY, 1.0));
+  const [backdropBlur, setBackdropBlur] = useState(() => safeGetJSON<boolean>(STORAGE_KEY_BACKDROP, true));
   const [dims, setDims] = useState<StoredDimensions>(() => {
     const stored = safeGetJSON<StoredDimensions>(STORAGE_KEY_DIMS, DEFAULT_DIMS);
     return stored;
@@ -167,11 +155,6 @@ function CodePanelInner() {
   const [sessionName, setSessionName] = useState('');
   const [sessionsError, setSessionsError] = useState('');
   const [sessionsBusy, setSessionsBusy] = useState(false);
-
-  const [ghToken, setGhToken] = useState('');
-  const [codespaces, setCodespaces] = useState<Codespace[]>([]);
-  const [codespacesBusy, setCodespacesBusy] = useState(false);
-  const [codespacesError, setCodespacesError] = useState('');
 
   const [urlError, setUrlError] = useState('');
   const [showGuide, setShowGuide] = useState(false);
@@ -227,13 +210,15 @@ function CodePanelInner() {
     try {
       const stored = safeGetJSON<StoredConnection | null>(STORAGE_KEY_URL, null);
       if (stored && stored.url) {
-        setConnectionType(stored.type || detectConnectionType(stored.url));
-        setInputUrl(stored.url);
-        if (stored.type === 'localhost' && stored.port) {
-          setInputPort(stored.port);
-        }
+        const type: ConnectionType = stored.type === 'codespaces' ? 'custom' : (stored.type || detectConnectionType(stored.url));
+        const url = type === 'localhost' ? buildLocalhostUrl(stored.port || '8080') : stored.url;
+
+        setConnectionType(type);
+        if (type === 'custom') setInputUrl(stored.url);
+        if (type === 'localhost' && stored.port) setInputPort(stored.port);
+
         // Auto-reconnect
-        setConnectedUrl(stored.url);
+        setConnectedUrl(url);
         setStatus('connecting');
       }
     } catch {
@@ -245,6 +230,11 @@ function CodePanelInner() {
   useEffect(() => {
     safeSetNumber(STORAGE_KEY_OPACITY, opacity);
   }, [opacity]);
+
+  /* ---- Persist backdrop mode ---- */
+  useEffect(() => {
+    safeSetJSON(STORAGE_KEY_BACKDROP, backdropBlur);
+  }, [backdropBlur]);
 
   /* ---- Persist dock mode ---- */
   useEffect(() => {
@@ -292,11 +282,16 @@ function CodePanelInner() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  /* ---- Custom toggle event ---- */
+  /* ---- Custom toggle/open events ---- */
   useEffect(() => {
-    const handler = () => setIsOpen((prev) => !prev);
-    window.addEventListener('tds:toggle-terminal', handler);
-    return () => window.removeEventListener('tds:toggle-terminal', handler);
+    const onToggle = () => setIsOpen((prev) => !prev);
+    const onOpen = () => setIsOpen(true);
+    window.addEventListener('tds:toggle-terminal', onToggle);
+    window.addEventListener('tds:open-terminal', onOpen);
+    return () => {
+      window.removeEventListener('tds:toggle-terminal', onToggle);
+      window.removeEventListener('tds:open-terminal', onOpen);
+    };
   }, []);
 
   /* ---- Auto-reconnect on page nav ---- */
@@ -306,6 +301,50 @@ function CodePanelInner() {
       setStatus('connecting');
     }
   }, [connectedUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---- Localhost connect fallback (iframe may not error) ---- */
+  useEffect(() => {
+    if (status !== 'connecting' || !connectedUrl) return;
+
+    const url = connectedUrl;
+    let isLocal = false;
+    try {
+      const u = new URL(url);
+      isLocal = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+    } catch {
+      isLocal = false;
+    }
+
+    if (!isLocal) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1500);
+    let cancelled = false;
+
+    fetch(url, { mode: 'no-cors', signal: controller.signal })
+      .then(() => {
+        // reachable — iframe onLoad will flip status to "connected"
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatus('error');
+        setConnectedUrl('');
+        setUrlError(`Couldn't connect to ${url}. Start code-server, then click Connect.`);
+        setShowGuide(true);
+        try {
+          localStorage.removeItem(STORAGE_KEY_URL);
+        } catch {
+          /* ignore */
+        }
+      })
+      .finally(() => window.clearTimeout(timeout));
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [connectedUrl, status]);
 
   /* ---- Connection handlers ---- */
   const validateUrl = useCallback((type: ConnectionType, raw: string, port?: string): string | null => {
@@ -318,11 +357,6 @@ function CodePanelInner() {
     }
     if (type === 'localhost') {
       if (!url.startsWith('http://')) return 'Localhost URLs must use http://';
-      return null;
-    }
-
-    if (type === 'codespaces') {
-      if (!url.startsWith('https://')) return 'Codespaces URLs must use https://';
       return null;
     }
 
@@ -409,10 +443,11 @@ function CodePanelInner() {
   const handleConnectSession = useCallback(
     async (s: TerminalSession) => {
       setIsOpen(true);
-      handleQuickConnect(s.type as ConnectionType, s.url, s.port);
+      const normalizedType: ConnectionType = s.type === 'localhost' ? 'localhost' : 'custom';
+      handleQuickConnect(normalizedType, s.url, s.port);
 
       try {
-        await upsertTerminalSession({ ...s, updatedAt: Date.now() });
+        await upsertTerminalSession({ ...s, type: normalizedType, updatedAt: Date.now() });
         await refreshSessions();
       } catch {
         // Non-fatal
@@ -432,83 +467,6 @@ function CodePanelInner() {
       }
     },
     [refreshSessions]
-  );
-
-  const openUrlInPanel = useCallback(
-    (url: string) => {
-      setUrlError('');
-      setStatus('connecting');
-      setConnectedUrl(url);
-      safeSetJSON(STORAGE_KEY_URL, { type: 'custom', url });
-    },
-    []
-  );
-
-  const loadCodespaces = useCallback(async () => {
-    const token = ghToken.trim();
-    if (!token) {
-      setCodespacesError('Paste a GitHub token to load your Codespaces');
-      return;
-    }
-
-    setCodespacesBusy(true);
-    setCodespacesError('');
-    try {
-      const res = await fetch('https://api.github.com/user/codespaces', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(`GitHub API error (${res.status})`);
-      }
-
-      const data = (await res.json()) as any;
-      const list = Array.isArray(data?.codespaces) ? data.codespaces : Array.isArray(data) ? data : [];
-      setCodespaces(list as Codespace[]);
-    } catch {
-      setCodespacesError('Could not load Codespaces (check token / permissions)');
-    } finally {
-      setCodespacesBusy(false);
-    }
-  }, [ghToken]);
-
-  const codespaceAction = useCallback(
-    async (name: string, action: 'start' | 'stop' | 'delete') => {
-      const token = ghToken.trim();
-      if (!token) {
-        setCodespacesError('Paste a GitHub token to manage Codespaces');
-        return;
-      }
-
-      setCodespacesBusy(true);
-      setCodespacesError('');
-      try {
-        const url = `https://api.github.com/user/codespaces/${encodeURIComponent(name)}${action === 'delete' ? '' : `/${action}`}`;
-        const res = await fetch(url, {
-          method: action === 'delete' ? 'DELETE' : 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`GitHub API error (${res.status})`);
-        }
-
-        await loadCodespaces();
-      } catch {
-        setCodespacesError(`Could not ${action} Codespace`);
-      } finally {
-        setCodespacesBusy(false);
-      }
-    },
-    [ghToken, loadCodespaces]
   );
 
   const handleDisconnect = useCallback(() => {
@@ -631,13 +589,12 @@ function CodePanelInner() {
   /* ---- Connection type config ---- */
   const connectionTypes: { key: ConnectionType; label: string; icon: React.ReactNode }[] = [
     { key: 'localhost', label: 'Localhost', icon: <Monitor size={14} /> },
-    { key: 'codespaces', label: 'GitHub Codespaces', icon: <Globe size={14} /> },
     { key: 'custom', label: 'Custom URL', icon: <Link2 size={14} /> },
   ];
 
   const sessionTypeLabel: Record<TerminalSession['type'], string> = {
     localhost: 'Localhost',
-    codespaces: 'Codespaces',
+    codespaces: 'Custom',
     custom: 'Custom',
   };
 
@@ -660,7 +617,7 @@ function CodePanelInner() {
       {isOpen && (
         <div
           ref={drawerRef}
-          className={`${styles.drawer} ${isResizing ? styles.drawerResizing : ''}`}
+          className={`${styles.drawer} ${!backdropBlur ? styles.drawerNoBlur : ''} ${isResizing ? styles.drawerResizing : ''}`}
           style={{
             top: cd.top,
             left: cd.left,
@@ -747,6 +704,16 @@ function CodePanelInner() {
                 <Moon size={13} className={styles.opacityIcon} />
                 <span className={styles.opacityValue}>{Math.round(opacity * 100)}%</span>
               </label>
+
+              <button
+                type="button"
+                className={`${styles.backdropBtn} ${backdropBlur ? styles.backdropBtnActive : ''}`}
+                onClick={() => setBackdropBlur((v) => !v)}
+                title={backdropBlur ? 'Blur background behind panel' : 'Transparent background (no blur)'}
+                aria-label="Toggle blur background"
+              >
+                {backdropBlur ? 'Blur' : 'Clear'}
+              </button>
             </div>
             <div className={styles.headerActions}>
               <div className={styles.dockToggle} role="group" aria-label="Dock position">
@@ -863,14 +830,6 @@ function CodePanelInner() {
                       </div>
                     </>
                   )}
-                  {connectionType === 'codespaces' && (
-                    <>
-                      <div className={styles.fieldLabel}>GitHub Codespaces</div>
-                      <div className={styles.fieldHint}>
-                        Manage/start/stop/delete Codespaces below. To connect to a forwarded port URL (e.g. <code>https://...try.github.dev</code>), use <strong>Custom URL</strong>.
-                      </div>
-                    </>
-                  )}
                   {connectionType === 'custom' && (
                     <>
                       <div className={styles.fieldLabel}>URL</div>
@@ -896,130 +855,11 @@ function CodePanelInner() {
 
                 {urlError && <div className={styles.connectError}>{urlError}</div>}
 
-                {connectionType !== 'codespaces' && (
-                  <button className={styles.connectBtn} onClick={handleConnect}>
-                    <Wifi size={15} />
-                    Connect
-                  </button>
-                )}
+                <button className={styles.connectBtn} onClick={handleConnect}>
+                  <Wifi size={15} />
+                  Connect
+                </button>
               </div>
-
-              {connectionType === 'codespaces' && (
-                <div className={styles.codespacesCard}>
-                  <div className={styles.sessionsHeader}>
-                    <div>
-                      <div className={styles.sessionsTitle}>Codespaces</div>
-                      <div className={styles.sessionsSubtitle}>
-                        Manage your GitHub Codespaces from here (no new tabs).
-                      </div>
-                    </div>
-                    <div className={styles.sessionActions}>
-                      <button
-                        className={styles.sessionConnectBtn}
-                        type="button"
-                        onClick={() => openUrlInPanel('https://github.com/codespaces')}
-                      >
-                        <Globe size={14} />
-                        Open
-                      </button>
-                      <button
-                        className={styles.sessionConnectBtn}
-                        type="button"
-                        onClick={() => openUrlInPanel('https://github.com/codespaces/new')}
-                      >
-                        <Globe size={14} />
-                        New
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={styles.codespacesTokenRow}>
-                    <input
-                      className={styles.sessionNameInput}
-                      type="password"
-                      placeholder="GitHub token (for list/start/stop/delete)"
-                      value={ghToken}
-                      onChange={(e) => {
-                        setGhToken(e.target.value);
-                        setCodespacesError('');
-                      }}
-                      aria-label="GitHub token"
-                    />
-                    <button
-                      className={styles.saveBtn}
-                      onClick={() => void loadCodespaces()}
-                      disabled={codespacesBusy}
-                      type="button"
-                    >
-                      <RotateCcw size={14} />
-                      Load
-                    </button>
-                  </div>
-
-                  {codespacesError && <div className={styles.sessionsError}>{codespacesError}</div>}
-
-                  <div className={styles.sessionsList}>
-                    {codespacesBusy ? (
-                      <div className={styles.sessionsEmpty}>Loading…</div>
-                    ) : codespaces.length === 0 ? (
-                      <div className={styles.sessionsEmpty}>No Codespaces loaded yet.</div>
-                    ) : (
-                      codespaces.map((c) => {
-                        const repo = c.repository?.full_name ?? 'Repository';
-                        const label = c.display_name ?? c.name;
-                        const state = c.state ?? 'unknown';
-                        const openUrl = c.web_url ?? `https://github.com/codespaces/${c.name}`;
-                        return (
-                          <div key={c.name} className={styles.sessionItem}>
-                            <div className={styles.sessionMeta}>
-                              <div className={styles.sessionName}>{label}</div>
-                              <div className={styles.sessionInfo}>
-                                {repo} • {state}
-                              </div>
-                            </div>
-                            <div className={styles.sessionActions}>
-                              <button
-                                className={styles.sessionConnectBtn}
-                                type="button"
-                                onClick={() => openUrlInPanel(openUrl)}
-                              >
-                                <Wifi size={14} />
-                                Open
-                              </button>
-                              {state === 'available' ? (
-                                <button
-                                  className={styles.sessionConnectBtn}
-                                  type="button"
-                                  onClick={() => void codespaceAction(c.name, 'stop')}
-                                >
-                                  Stop
-                                </button>
-                              ) : (
-                                <button
-                                  className={styles.sessionConnectBtn}
-                                  type="button"
-                                  onClick={() => void codespaceAction(c.name, 'start')}
-                                >
-                                  Start
-                                </button>
-                              )}
-                              <button
-                                className={styles.iconBtn}
-                                onClick={() => void codespaceAction(c.name, 'delete')}
-                                aria-label={`Delete ${label}`}
-                                title="Delete"
-                                type="button"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Saved sessions */}
               <div className={styles.sessionsCard}>
@@ -1038,33 +878,31 @@ function CodePanelInner() {
                   </button>
                 </div>
 
-                {connectionType !== 'codespaces' && (
-                  <div className={styles.sessionsSaveRow}>
-                    <input
-                      className={styles.sessionNameInput}
-                      type="text"
-                      placeholder="Name this connection (e.g. code-server — Localhost)"
-                      value={sessionName}
-                      onChange={(e) => {
-                        setSessionName(e.target.value);
-                        setSessionsError('');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void handleSaveSession();
-                      }}
-                      aria-label="Session name"
-                    />
-                    <button
-                      className={styles.saveBtn}
-                      onClick={() => void handleSaveSession()}
-                      disabled={sessionsBusy}
-                      type="button"
-                    >
-                      <Save size={14} />
-                      Save
-                    </button>
-                  </div>
-                )}
+                <div className={styles.sessionsSaveRow}>
+                  <input
+                    className={styles.sessionNameInput}
+                    type="text"
+                    placeholder="Name this connection (e.g. code-server — Localhost)"
+                    value={sessionName}
+                    onChange={(e) => {
+                      setSessionName(e.target.value);
+                      setSessionsError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleSaveSession();
+                    }}
+                    aria-label="Session name"
+                  />
+                  <button
+                    className={styles.saveBtn}
+                    onClick={() => void handleSaveSession()}
+                    disabled={sessionsBusy}
+                    type="button"
+                  >
+                    <Save size={14} />
+                    Save
+                  </button>
+                </div>
 
                 {sessionsError && <div className={styles.sessionsError}>{sessionsError}</div>}
 
@@ -1124,17 +962,6 @@ function CodePanelInner() {
                   <Monitor size={13} />
                   Localhost :3000
                 </button>
-                <button
-                  className={styles.quickBtn}
-                  onClick={() => {
-                    setConnectionType('codespaces');
-                    setInputUrl('');
-                    setInputPort('8080');
-                  }}
-                >
-                  <Globe size={13} />
-                  Codespaces
-                </button>
               </div>
 
               {/* Tunnel setup guide */}
@@ -1148,16 +975,24 @@ function CodePanelInner() {
                 </button>
                 {showGuide && (
                   <div className={styles.guideSteps}>
-                    <strong>Step 1</strong> — Install code-server (one time only)
+                    <strong>Step 1</strong> — Install code-server (one time)
                     <code className={styles.guideCode}>curl -fsSL https://code-server.dev/install.sh | sh</code>
-                    <strong>Step 2</strong> — Start code-server
-                    <code className={styles.guideCode}>code-server --auth none --bind-addr 127.0.0.1:8080</code>
-                    <strong>Step 3</strong> — Connect from this docs site
+
+                    <strong>Step 2</strong> — Configure (no auth + localhost)
+                    <code className={styles.guideCode}>mkdir -p ~/.config/code-server</code>
+                    <code className={styles.guideCode}>nano ~/.config/code-server/config.yaml</code>
+                    <code className={styles.guideCode}>{`bind-addr: 127.0.0.1:8080
+auth: none
+cert: false`}</code>
+
+                    <strong>Step 3</strong> — Start now
+                    <code className={styles.guideCode}>code-server</code>
+
+                    <strong>Step 4</strong> — Start on boot (systemd)
+                    <code className={styles.guideCode}>sudo systemctl enable --now code-server@$USER</code>
+
+                    <strong>Step 5</strong> — Connect from this docs site
                     <code className={styles.guideCode}>Terminal → Localhost → Port 8080 → Connect</code>
-                    <strong>Tip</strong>
-                    <div className={styles.fieldHint}>
-                      If you’re on Codespaces, forward the port and paste the HTTPS URL under “GitHub Codespaces”.
-                    </div>
                   </div>
                 )}
               </div>

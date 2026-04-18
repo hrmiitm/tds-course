@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import ChatPanel from '@site/src/components/ChatPanel';
 import CodePanel from '@site/src/components/CodePanel';
+import PomodoroWidget from '@site/src/components/PomodoroWidget';
 
 // SVG icons as inline strings for the TOC toggle button
 const PANEL_RIGHT_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="15" x2="15" y1="3" y2="21"/></svg>`;
@@ -8,6 +9,8 @@ const PANEL_RIGHT_CLOSE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18
 
 const TERMINAL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 19h16"/><path d="M6 9l3 3-3 3"/><path d="M11 15h7"/></svg>`;
 const CHAT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>`;
+const PRINT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
+const POMODORO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13V9"/><path d="M12 13l3 2"/><path d="M9 2h6"/><path d="M19 6l-2 2"/><path d="M5 6l2 2"/></svg>`;
 
 // Swizzled Root component — adds resizable left sidebar + optional TOC toggle
 export default function Root({ children }: { children: React.ReactNode }): React.JSX.Element {
@@ -34,6 +37,10 @@ export default function Root({ children }: { children: React.ReactNode }): React
     } catch {
       // ignore
     }
+
+    // ===== 2.5 Print / PDF handler =====
+    const onPrint = () => window.print();
+    window.addEventListener('tds:print', onPrint);
 
     // ===== 3. Sidebar resize handle =====
     const addResizeHandle = () => {
@@ -102,7 +109,7 @@ export default function Root({ children }: { children: React.ReactNode }): React
         (navbarRight.querySelector('a[href*="github"]') as HTMLElement | null) ||
         null;
 
-      const ensureBtn = (key: 'chat' | 'terminal', svg: string, label: string, eventName: string) => {
+      const ensureBtn = (key: string, svg: string, label: string, eventName: string) => {
         const cls = `tds-panel-toggle-btn tds-${key}-toggle-btn clean-btn`;
         if (document.querySelector(`.tds-${key}-toggle-btn`)) return;
 
@@ -122,7 +129,9 @@ export default function Root({ children }: { children: React.ReactNode }): React
         }
       };
 
-      // Order: chat, terminal
+      // Order: print, pomodoro, chat, terminal
+      ensureBtn('print', PRINT_SVG, 'Print / Save as PDF', 'tds:print');
+      ensureBtn('pomodoro', POMODORO_SVG, 'Toggle Pomodoro timer', 'tds:toggle-pomodoro');
       ensureBtn('chat', CHAT_SVG, 'Toggle assistant chat', 'tds:toggle-chat');
       ensureBtn('terminal', TERMINAL_SVG, 'Toggle terminal', 'tds:toggle-terminal');
     };
@@ -174,6 +183,7 @@ export default function Root({ children }: { children: React.ReactNode }): React
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      window.removeEventListener('tds:print', onPrint);
       observer.disconnect();
       // Clean up resize event listeners
       document.querySelectorAll('.sidebar-resize-handle').forEach((handle) => {
@@ -189,6 +199,7 @@ export default function Root({ children }: { children: React.ReactNode }): React
       {children}
       <CodePanel />
       <ChatPanel />
+      <PomodoroWidget />
     </>
   );
 }

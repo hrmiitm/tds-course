@@ -70,9 +70,18 @@
   cursor: pointer;
 }
 
+.collapseBtn {
+  padding: 6px 10px;
+}
+
 .actionBtn:hover {
   color: var(--tds-text-primary);
   border-color: rgba(var(--ifm-color-primary-rgb, 59, 130, 246), 0.6);
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .body {

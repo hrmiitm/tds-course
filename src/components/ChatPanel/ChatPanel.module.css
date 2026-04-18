@@ -869,3 +869,10 @@
     font-size: 13px;
   }
 }
+
+@media print {
+  .fab,
+  .panel {
+    display: none !important;
+  }
+}

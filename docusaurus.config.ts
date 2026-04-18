@@ -118,18 +118,34 @@ const config: Config = {
           label: 'Course',
         },
         {
+          to: '/#features',
+          label: 'Features',
+          position: 'left',
+        },
+        {
+          to: '/#progress',
+          label: 'Progress',
+          position: 'left',
+        },
+        {
           to: '/labs',
           label: 'Labs',
           position: 'left',
         },
         {
-          to: '/reference/tools-glossary',
-          label: 'Reference',
+          href: 'https://github.com/iit-madras/tds-course',
+          label: 'Community',
           position: 'left',
         },
         {
           type: 'search',
           position: 'right',
+        },
+        {
+          to: '/intro',
+          label: 'Start Learning',
+          position: 'right',
+          className: 'tds-navbar-cta',
         },
         {
           href: 'https://github.com/iit-madras/tds-course',

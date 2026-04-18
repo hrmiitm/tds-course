@@ -182,6 +182,7 @@ const sidebars: SidebarsConfig = {
         'labs/lab-14-langgraph',
         'labs/lab-15-polars-duckdb',
         'labs/lab-16-guardrails-redteam',
+        'labs/lab-17-system-design-review',
       ],
     },
     {

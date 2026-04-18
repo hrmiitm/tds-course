@@ -95,12 +95,12 @@ const KNOWLEDGE_BASE: Array<{ keywords: string[]; response: string }> = [
   {
     keywords: ['lab', 'exercise', 'assignment', 'hands-on'],
     response:
-      'We have **8 graded labs** in this course:\n\n1. 🤖 **ChatBot with FastAPI** (Week 2) — ⭐⭐\n2. 🔍 **RAG ChatBot** (Week 4) — ⭐⭐⭐\n3. 🎯 **Gemma4 Finetuning** (Week 7) — ⭐⭐⭐⭐\n4. 🔎 **Hybrid RAG ChatBot** (Week 4) — ⭐⭐⭐\n5. ✍️ **Signature Detection** (Week 6) — ⭐⭐⭐\n6. 🤖 **AI Agent + MCP** (Week 5) — ⭐⭐⭐⭐\n7. 🔄 **CI/CD Pipeline** (Week 8) — ⭐⭐⭐\n8. ☁️ **Full MLOps on GCP** (Bonus) — ⭐⭐⭐⭐⭐\n\n👉 [View Labs](/labs)',
+      'This course includes **hands-on labs** that help you learn by building real projects.\n\nExamples:\n- **ChatBot with FastAPI**\n- **RAG ChatBot**\n- **AI Agent + MCP**\n- **CI/CD Pipeline**\n\n👉 [View all labs](/labs)',
   },
   {
     keywords: ['terminal', 'code-server', 'coding', 'ide', 'vscode'],
     response:
-      'The **TDS Terminal** is a built-in coding environment!\n\n1. Press **Ctrl+`** or click the **Terminal** icon in the navbar\n2. (Linux) Install code-server once: `curl -fsSL https://code-server.dev/install.sh | sh`\n3. Start code-server: `code-server --auth none --bind-addr 127.0.0.1:8080`\n4. In the Terminal panel: **Localhost → Port 8080 → Connect**\n\nUsing **GitHub Codespaces**? Forward the port and paste the HTTPS URL under “GitHub Codespaces”.',
+      'The **TDS Terminal** embeds your **code-server** UI right inside this site.\n\n1. Press **Ctrl+`** or click the **Terminal** icon in the navbar\n2. (Linux) Install once: `curl -fsSL https://code-server.dev/install.sh | sh`\n3. Configure no-auth (recommended for localhost):\n\n```yaml\nbind-addr: 127.0.0.1:8080\nauth: none\ncert: false\n```\n\n4. Start now: `code-server`\n5. Start on boot: `sudo systemctl enable --now code-server@$USER`\n6. In the Terminal panel: **Localhost → Port 8080 → Connect**',
   },
   {
     keywords: ['prerequisite', 'require', 'before', 'start', 'begin'],
