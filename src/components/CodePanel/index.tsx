@@ -16,12 +16,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import styles from './CodePanel.module.css';
-import {
-  deleteTerminalSession,
-  listTerminalSessions,
-  upsertTerminalSession,
-  type TerminalSession,
-} from '../../utils/terminalSessions';
 
 /* ---------- Types ---------- */
 
@@ -43,6 +37,16 @@ interface StoredConnection {
   port?: string;
 }
 
+interface RecentProject {
+  id: string;
+  name: string;
+  type: ConnectionType;
+  baseUrl: string;
+  port?: string;
+  folder: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 /* ---------- Constants ---------- */
 
@@ -51,6 +55,9 @@ const STORAGE_KEY_DIMS = 'tds_terminal_dimensions';
 const STORAGE_KEY_OPACITY = 'tds_terminal_opacity';
 const STORAGE_KEY_DOCK = 'tds_terminal_dock_mode';
 const STORAGE_KEY_BACKDROP = 'tds_terminal_backdrop_blur';
+const STORAGE_KEY_RECENTS = 'tds_terminal_recent_projects_v1';
+
+const MAX_RECENTS = 12;
 
 const PANEL_MARGIN = 12;
 
@@ -132,6 +139,29 @@ function buildUrl(type: ConnectionType, raw: string, port?: string): string {
   }
 }
 
+function makeId(prefix = 'p'): string {
+  try {
+    return `${prefix}_${crypto.randomUUID()}`;
+  } catch {
+    return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+}
+
+function addFolderToCodeServerUrl(baseUrl: string, folder: string): string {
+  const rawFolder = folder.trim();
+  if (!rawFolder) return baseUrl;
+  const key = rawFolder.endsWith('.code-workspace') ? 'workspace' : 'folder';
+
+  try {
+    const u = new URL(baseUrl);
+    u.searchParams.set(key, rawFolder);
+    return u.toString();
+  } catch {
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${sep}${key}=${encodeURIComponent(rawFolder)}`;
+  }
+}
+
 /* ---------- Inner Component ---------- */
 
 function CodePanelInner() {
@@ -151,10 +181,12 @@ function CodePanelInner() {
   const [dockMode, setDockMode] = useState<DockMode>(() =>
     safeGetJSON<DockMode>(STORAGE_KEY_DOCK, 'bottom')
   );
-  const [sessions, setSessions] = useState<TerminalSession[]>([]);
-  const [sessionName, setSessionName] = useState('');
-  const [sessionsError, setSessionsError] = useState('');
-  const [sessionsBusy, setSessionsBusy] = useState(false);
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(() =>
+    safeGetJSON<RecentProject[]>(STORAGE_KEY_RECENTS, [])
+  );
+  const [projectName, setProjectName] = useState('');
+  const [projectFolder, setProjectFolder] = useState('');
+  const [projectsError, setProjectsError] = useState('');
 
   const [urlError, setUrlError] = useState('');
   const [showGuide, setShowGuide] = useState(false);
@@ -241,22 +273,10 @@ function CodePanelInner() {
     safeSetJSON(STORAGE_KEY_DOCK, dockMode);
   }, [dockMode]);
 
-  const refreshSessions = useCallback(async () => {
-    setSessionsBusy(true);
-    setSessionsError('');
-    try {
-      const list = await listTerminalSessions();
-      setSessions(list);
-    } catch {
-      setSessionsError('Could not load saved sessions');
-    } finally {
-      setSessionsBusy(false);
-    }
-  }, []);
-
+  /* ---- Persist recent projects ---- */
   useEffect(() => {
-    void refreshSessions();
-  }, [refreshSessions]);
+    safeSetJSON(STORAGE_KEY_RECENTS, recentProjects.slice(0, MAX_RECENTS));
+  }, [recentProjects]);
 
   /* ---- Persist dims (debounced) ---- */
   const dimsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -367,6 +387,25 @@ function CodePanelInner() {
     return null;
   }, []);
 
+  const connectTo = useCallback(
+    (type: ConnectionType, baseUrl: string, port?: string, folder?: string) => {
+      setConnectionType(type);
+      if (type === 'localhost' && port) setInputPort(port);
+      if (type === 'custom') setInputUrl(baseUrl);
+
+      setUrlError('');
+      const finalUrl = folder ? addFolderToCodeServerUrl(baseUrl, folder) : baseUrl;
+      setStatus('connecting');
+      setConnectedUrl(finalUrl);
+      safeSetJSON(STORAGE_KEY_URL, {
+        type,
+        url: finalUrl,
+        port: type === 'localhost' ? port : undefined,
+      });
+    },
+    []
+  );
+
   const handleConnect = useCallback(() => {
     const error = validateUrl(connectionType, inputUrl, inputPort);
     if (error) {
@@ -374,39 +413,23 @@ function CodePanelInner() {
       return;
     }
     setUrlError('');
-    const url = buildUrl(connectionType, inputUrl, inputPort);
-    setStatus('connecting');
-    setConnectedUrl(url);
-    safeSetJSON(STORAGE_KEY_URL, {
-      type: connectionType,
-      url,
-      port: connectionType === 'localhost' ? inputPort : undefined,
-    });
-  }, [connectionType, inputUrl, inputPort, validateUrl]);
+    const baseUrl = buildUrl(connectionType, inputUrl, inputPort);
+    connectTo(connectionType, baseUrl, connectionType === 'localhost' ? inputPort : undefined);
+  }, [connectTo, connectionType, inputPort, inputUrl, validateUrl]);
 
   const handleQuickConnect = useCallback(
     (type: ConnectionType, url: string, port?: string) => {
-      setConnectionType(type);
-      if (type === 'localhost' && port) setInputPort(port);
-      if (type !== 'localhost') setInputUrl(url);
-      setUrlError('');
-      setStatus('connecting');
-      setConnectedUrl(url);
-      safeSetJSON(STORAGE_KEY_URL, { type, url, port });
+      connectTo(type, url, port);
     },
-    []
+    [connectTo]
   );
 
-  const makeSessionId = useCallback((): string => {
-    const c = globalThis.crypto as Crypto | undefined;
-    if (c?.randomUUID) return c.randomUUID();
-    return `ts_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  }, []);
+  const handleAddRecentProject = useCallback(() => {
+    setProjectsError('');
 
-  const handleSaveSession = useCallback(async () => {
-    const name = sessionName.trim();
-    if (!name) {
-      setSessionsError('Please enter a session name');
+    const folder = projectFolder.trim();
+    if (!folder) {
+      setProjectsError('Enter a folder/workspace path to save a project');
       return;
     }
 
@@ -416,58 +439,73 @@ function CodePanelInner() {
       return;
     }
 
-    setUrlError('');
-    const url = buildUrl(connectionType, inputUrl, inputPort);
-    if (!url) return;
+    const baseUrl = buildUrl(connectionType, inputUrl, inputPort);
+    const name =
+      projectName.trim() ||
+      (folder ? folder.split('/').filter(Boolean).slice(-1)[0] : 'Project');
 
-    setSessionsError('');
-    try {
-      const now = Date.now();
-      const session: TerminalSession = {
-        id: makeSessionId(),
-        name,
-        type: connectionType,
-        url,
-        port: connectionType === 'localhost' ? inputPort : undefined,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await upsertTerminalSession(session);
-      setSessionName('');
-      await refreshSessions();
-    } catch {
-      setSessionsError('Could not save session');
-    }
-  }, [connectionType, inputPort, inputUrl, makeSessionId, refreshSessions, sessionName, validateUrl]);
+    const now = Date.now();
+    const port = connectionType === 'localhost' ? inputPort : undefined;
 
-  const handleConnectSession = useCallback(
-    async (s: TerminalSession) => {
+    setRecentProjects((prev) => {
+      const existingIndex = prev.findIndex(
+        (p) => p.type === connectionType && p.baseUrl === baseUrl && p.folder === folder
+      );
+
+      const next = [...prev];
+      const item: RecentProject =
+        existingIndex >= 0
+          ? {
+              ...next[existingIndex],
+              name,
+              baseUrl,
+              port,
+              folder,
+              updatedAt: now,
+            }
+          : {
+              id: makeId('proj'),
+              name,
+              type: connectionType,
+              baseUrl,
+              port,
+              folder,
+              createdAt: now,
+              updatedAt: now,
+            };
+
+      if (existingIndex >= 0) next.splice(existingIndex, 1);
+      return [item, ...next].slice(0, MAX_RECENTS);
+    });
+
+    setProjectName('');
+  }, [connectionType, inputPort, inputUrl, projectFolder, projectName, validateUrl]);
+
+  const handleOpenRecentProject = useCallback(
+    (p: RecentProject) => {
       setIsOpen(true);
-      const normalizedType: ConnectionType = s.type === 'localhost' ? 'localhost' : 'custom';
-      handleQuickConnect(normalizedType, s.url, s.port);
+      setProjectsError('');
+      setProjectFolder(p.folder);
+      setProjectName(p.name);
 
-      try {
-        await upsertTerminalSession({ ...s, type: normalizedType, updatedAt: Date.now() });
-        await refreshSessions();
-      } catch {
-        // Non-fatal
-      }
+      connectTo(p.type, p.baseUrl, p.port, p.folder);
+
+      setRecentProjects((prev) => {
+        const idx = prev.findIndex((x) => x.id === p.id);
+        if (idx < 0) return prev;
+        const now = Date.now();
+        const updated = { ...prev[idx], updatedAt: now };
+        const next = [...prev];
+        next.splice(idx, 1);
+        return [updated, ...next].slice(0, MAX_RECENTS);
+      });
     },
-    [handleQuickConnect, refreshSessions]
+    [connectTo]
   );
 
-  const handleDeleteSession = useCallback(
-    async (id: string) => {
-      setSessionsError('');
-      try {
-        await deleteTerminalSession(id);
-        await refreshSessions();
-      } catch {
-        setSessionsError('Could not delete session');
-      }
-    },
-    [refreshSessions]
-  );
+  const handleDeleteRecentProject = useCallback((id: string) => {
+    setRecentProjects((prev) => prev.filter((p) => p.id !== id));
+  }, []);
 
   const handleDisconnect = useCallback(() => {
     setConnectedUrl('');
@@ -601,13 +639,7 @@ function CodePanelInner() {
     { key: 'custom', label: 'Custom URL', icon: <Link2 size={14} /> },
   ];
 
-  const sessionTypeLabel: Record<TerminalSession['type'], string> = {
-    localhost: 'Localhost',
-    codespaces: 'Custom',
-    custom: 'Custom',
-  };
-
-  const formatSessionUrl = (url: string): string => {
+  const formatProjectUrl = (url: string): string => {
     try {
       const u = new URL(url);
       const path = u.pathname && u.pathname !== '/' ? u.pathname : '';
@@ -870,78 +902,80 @@ function CodePanelInner() {
                 </button>
               </div>
 
-              {/* Saved sessions */}
+              {/* Recent projects */}
               <div className={styles.sessionsCard}>
                 <div className={styles.sessionsHeader}>
                   <div>
-                    <div className={styles.sessionsTitle}>Saved sessions</div>
-                    <div className={styles.sessionsSubtitle}>Stored locally in this browser (IndexedDB).</div>
+                    <div className={styles.sessionsTitle}>Recent projects</div>
+                    <div className={styles.sessionsSubtitle}>
+                      Saved locally in this browser. Selecting one connects and opens that folder.
+                    </div>
                   </div>
-                  <button
-                    className={styles.iconBtn}
-                    onClick={() => void refreshSessions()}
-                    aria-label="Refresh saved sessions"
-                    title="Refresh list"
-                  >
-                    <RotateCcw size={15} />
-                  </button>
                 </div>
 
                 <div className={styles.sessionsSaveRow}>
                   <input
                     className={styles.sessionNameInput}
                     type="text"
-                    placeholder="Name this connection (e.g. code-server — Localhost)"
-                    value={sessionName}
+                    placeholder="Project name (optional)"
+                    value={projectName}
                     onChange={(e) => {
-                      setSessionName(e.target.value);
-                      setSessionsError('');
+                      setProjectName(e.target.value);
+                      setProjectsError('');
+                    }}
+                    aria-label="Project name"
+                  />
+                </div>
+
+                <div className={styles.sessionsSaveRow}>
+                  <input
+                    className={styles.sessionNameInput}
+                    type="text"
+                    placeholder="Folder/workspace path (e.g. /home/bitu/project or my.code-workspace)"
+                    value={projectFolder}
+                    onChange={(e) => {
+                      setProjectFolder(e.target.value);
+                      setProjectsError('');
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleSaveSession();
+                      if (e.key === 'Enter') handleAddRecentProject();
                     }}
-                    aria-label="Session name"
+                    aria-label="Folder path"
                   />
-                  <button
-                    className={styles.saveBtn}
-                    onClick={() => void handleSaveSession()}
-                    disabled={sessionsBusy}
-                    type="button"
-                  >
+                  <button className={styles.saveBtn} onClick={handleAddRecentProject} type="button">
                     <Save size={14} />
-                    Save
+                    Add
                   </button>
                 </div>
 
-                {sessionsError && <div className={styles.sessionsError}>{sessionsError}</div>}
+                {projectsError && <div className={styles.sessionsError}>{projectsError}</div>}
 
                 <div className={styles.sessionsList}>
-                  {sessionsBusy ? (
-                    <div className={styles.sessionsEmpty}>Loading…</div>
-                  ) : sessions.length === 0 ? (
-                    <div className={styles.sessionsEmpty}>No saved sessions yet.</div>
+                  {recentProjects.length === 0 ? (
+                    <div className={styles.sessionsEmpty}>No projects yet. Add one above.</div>
                   ) : (
-                    sessions.map((s) => (
-                      <div key={s.id} className={styles.sessionItem}>
+                    recentProjects.map((p) => (
+                      <div key={p.id} className={styles.sessionItem}>
                         <div className={styles.sessionMeta}>
-                          <div className={styles.sessionName}>{s.name}</div>
+                          <div className={styles.sessionName}>{p.name}</div>
                           <div className={styles.sessionInfo}>
-                            {sessionTypeLabel[s.type]} • {formatSessionUrl(s.url)}
+                            {p.type === 'localhost' ? 'Localhost' : 'Custom'} • {formatProjectUrl(p.baseUrl)}
+                            {p.folder ? ` • ${p.folder}` : ''}
                           </div>
                         </div>
                         <div className={styles.sessionActions}>
                           <button
                             className={styles.sessionConnectBtn}
-                            onClick={() => void handleConnectSession(s)}
+                            onClick={() => handleOpenRecentProject(p)}
                             type="button"
                           >
                             <Wifi size={14} />
-                            Connect
+                            Open
                           </button>
                           <button
                             className={styles.iconBtn}
-                            onClick={() => void handleDeleteSession(s.id)}
-                            aria-label={`Delete ${s.name}`}
+                            onClick={() => handleDeleteRecentProject(p.id)}
+                            aria-label={`Delete ${p.name}`}
                             title="Delete"
                             type="button"
                           >

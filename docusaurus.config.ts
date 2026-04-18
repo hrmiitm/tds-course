@@ -123,11 +123,6 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/#progress',
-          label: 'Progress',
-          position: 'left',
-        },
-        {
           to: '/labs',
           label: 'Labs',
           position: 'left',

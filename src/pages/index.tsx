@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import {
   ArrowRight,
-  BarChart3,
-  CheckCircle2,
   ChevronDown,
   MessageCircle,
   Moon,
@@ -38,7 +36,6 @@ type Week = {
   phase: PhaseId;
 };
 
-const STORAGE_COMPLETED_WEEKS = 'tds_completed_weeks_v1';
 
 const TOPIC_CHIPS = ['Python', 'Docker', 'LLMs', 'RAG', 'Agents', 'GCP', 'FastAPI'];
 
@@ -178,39 +175,6 @@ const LABS: Lab[] = [
   { number: 17, title: 'System Design Review', difficulty: 'Hard', duration: '5h', href: '/labs/lab-17-system-design-review' },
 ];
 
-function safeParseNumberArray(raw: string | null): number[] {
-  if (!raw) return [];
-  try {
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    return arr.map((x) => Number(x)).filter((n) => Number.isFinite(n));
-  } catch {
-    return [];
-  }
-}
-
-function useCompletedWeeks(): [number[], (next: number[]) => void] {
-  const [completed, setCompleted] = useState<number[]>([]);
-
-  useEffect(() => {
-    try {
-      setCompleted(safeParseNumberArray(localStorage.getItem(STORAGE_COMPLETED_WEEKS)));
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_COMPLETED_WEEKS, JSON.stringify(completed));
-    } catch {
-      // ignore
-    }
-  }, [completed]);
-
-  return [completed, setCompleted];
-}
-
 function SectionHeader({
   badge,
   title,
@@ -261,15 +225,15 @@ function Hero(): React.JSX.Element {
         <div className={styles.heroMeta}>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="green" />
-            10,000+ Students
+            10 Weeks
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="orange" />
-            4.8/5 Rating
+            17 Labs
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="teal" />
-            Certified
+            Light + Dark
           </div>
         </div>
 
@@ -379,26 +343,6 @@ function Features(): React.JSX.Element {
           />
 
           <FeatureCard
-            accent="teal"
-            icon={<BarChart3 size={18} />}
-            title="Progress Tracking"
-            description="Track your progress across all 10 weeks and labs with persistent storage."
-            preview={
-              <div className={styles.previewProgressMini}>
-                <div className={styles.miniRow}>
-                  <span>Overall Progress</span>
-                  <span className={styles.miniPct}>45%</span>
-                </div>
-                <div className={styles.miniSegments} aria-hidden="true">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <span key={i} className={i < 5 ? styles.miniSegOn : styles.miniSegOff} />
-                  ))}
-                </div>
-              </div>
-            }
-          />
-
-          <FeatureCard
             accent="purple"
             icon={<Moon size={18} />}
             title="Dark Mode"
@@ -439,7 +383,7 @@ function Features(): React.JSX.Element {
 }
 
 function PhaseAccordion(): React.JSX.Element {
-  const [open, setOpen] = useState<PhaseId>('ai-core');
+  const [open, setOpen] = useState<PhaseId | null>('ai-core');
   const [openTopics, setOpenTopics] = useState<Record<number, boolean>>({});
 
   const weeksById = useMemo(() => new Map(WEEKS.map((w) => [w.id, w])), []);
@@ -450,7 +394,7 @@ function PhaseAccordion(): React.JSX.Element {
         <SectionHeader
           title={
             <>
-              4 Phases. <span className={styles.wordGreen}>Zero</span> to <span className={styles.wordWarm}>Production</span>.
+              <span className={styles.wordGreen}>Zero</span> to <span className={styles.wordWarm}>Production</span>.
             </>
           }
           subtitle="A structured journey from development fundamentals to production ML systems. Each phase builds on the last, with hands-on labs every step of the way."
@@ -464,7 +408,7 @@ function PhaseAccordion(): React.JSX.Element {
                 <button
                   type="button"
                   className={styles.phaseBtn}
-                  onClick={() => setOpen((p) => (p === phase.id ? p : phase.id))}
+                  onClick={() => setOpen((p) => (p === phase.id ? null : phase.id))}
                   aria-expanded={isOpen}
                 >
                   <div className={styles.phaseLeft}>
@@ -519,93 +463,6 @@ function PhaseAccordion(): React.JSX.Element {
               </div>
             );
           })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProgressTracker(): React.JSX.Element {
-  const [completed, setCompleted] = useCompletedWeeks();
-
-  const completedSet = useMemo(() => new Set(completed), [completed]);
-
-  const completedCount = completedSet.size;
-  const total = WEEKS.length;
-  const pct = Math.round((completedCount / total) * 100);
-
-  const toggleWeek = (id: number) => {
-    setCompleted(
-      completedSet.has(id)
-        ? completed.filter((x) => x !== id)
-        : Array.from(new Set([...completed, id])).sort((a, b) => a - b)
-    );
-  };
-
-  return (
-    <section className={styles.section} id="progress">
-      <div className={styles.container}>
-        <SectionHeader
-          badge="Progress Tracker"
-          accent="teal"
-          title={
-            <>
-              Track Your <span className={styles.wordTeal}>Journey</span>
-            </>
-          }
-          subtitle="Mark weeks as complete and track your overall progress. Your data persists across sessions."
-        />
-
-        <div className={styles.progressGrid}>
-          <div className={styles.progressCard}>
-            <div className={styles.progressCardTitle}>Overall Progress</div>
-            <div className={styles.progressPct}>{pct}%</div>
-            <div className={styles.progressSub}>
-              {completedCount} of {total} weeks completed
-            </div>
-
-            <div className={styles.progressBar} aria-hidden="true">
-              <span style={{ width: `${pct}%` }} />
-            </div>
-
-            <div className={styles.progressStats}>
-              <div className={styles.statBox} data-accent="teal">
-                <div className={styles.statNum}>{completedCount}</div>
-                <div className={styles.statLabel}>Completed</div>
-              </div>
-              <div className={styles.statBox} data-accent="orange">
-                <div className={styles.statNum}>{total - completedCount}</div>
-                <div className={styles.statLabel}>Remaining</div>
-              </div>
-            </div>
-
-            <div className={styles.segmented} aria-hidden="true">
-              {WEEKS.map((w) => (
-                <span key={w.id} className={completedSet.has(w.id) ? styles.segOn : styles.segOff} />
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.progressCard}>
-            <div className={styles.progressCardTitle}>Week-by-Week Progress</div>
-            <div className={styles.weekList}>
-              {WEEKS.map((w) => {
-                const done = completedSet.has(w.id);
-                return (
-                  <button key={w.id} type="button" className={styles.weekRow} onClick={() => toggleWeek(w.id)}>
-                    <span className={styles.weekNumBadge}>{w.id}</span>
-                    <span className={styles.weekRowMain}>
-                      <span className={styles.weekRowTitle}>{`Week ${w.id}: ${w.title}`}</span>
-                    </span>
-                    <span className={done ? styles.weekDone : styles.weekTodo} aria-hidden="true">
-                      {done ? <CheckCircle2 size={16} /> : ''}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className={styles.progressHint}>Tip: click a week to mark it complete.</div>
-          </div>
         </div>
       </div>
     </section>
@@ -715,7 +572,6 @@ export default function Home(): React.JSX.Element {
         <Hero />
         <Features />
         <PhaseAccordion />
-        <ProgressTracker />
         <LabsSection />
         <BottomCTA />
       </main>

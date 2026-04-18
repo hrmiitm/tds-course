@@ -8,7 +8,6 @@ import rehypeSanitize from 'rehype-sanitize';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
 import {
-  MessageCircle,
   X,
   Send,
   Download,
@@ -18,6 +17,7 @@ import {
   Trash2,
   Bot,
   Save,
+  MessageCircle,
 } from 'lucide-react';
 import styles from './ChatPanel.module.css';
 
@@ -1657,17 +1657,6 @@ function ChatPanelInner() {
         </div>
       )}
 
-      {!isOpen && (
-        <button
-          className={styles.fab}
-          onClick={() => setIsOpen(true)}
-          aria-label="Open chat"
-          title="Open assistant chat"
-          type="button"
-        >
-          <MessageCircle size={22} />
-        </button>
-      )}
     </>
   );
 }
