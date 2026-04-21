@@ -1,0 +1,179 @@
+
+> tds-course@0.0.0 build
+> npm run docusaurus -- build
+
+
+> tds-course@0.0.0 docusaurus
+> node --require ./webpack-fix.js ./node_modules/@docusaurus/core/bin/docusaurus.mjs build
+
+[INFO] [en] Creating an optimized production build...
+[ERROR] Loading of version failed for version current
+
+[ERROR] Error: Unable to build website for locale en.
+    at tryToBuildLocale (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/commands/build/build.js:76:15)
+    at async /home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/commands/build/build.js:34:9
+    at async mapAsyncSequential (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/utils/lib/jsUtils.js:21:24)
+    at async Command.build (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/commands/build/build.js:33:5)
+    at async Promise.all (index 0)
+    at async runCLI (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/commands/cli.js:56:5)
+    at async file:///home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/bin/docusaurus.mjs:44:3 {
+  [cause]: Error: Invalid sidebar file at "sidebars.ts".
+  These sidebar document ids do not exist:
+  - week-1/latex
+  
+  Available document ids are:
+  - course-structure
+  - intro
+  - labs/all-lab-assignments
+  - labs/capstone-projects
+  - labs/index
+  - labs/week-1/bash-daily-project-summary
+  - labs/week-1/index
+  - labs/week-1/publish-python-library-pypi-uv
+  - labs/week-1/uv-cli-tool-latex-docs
+  - labs/week-2/fastapi-observability-grafana
+  - labs/week-2/gemma-api-hf-spaces-google-auth
+  - labs/week-2/index
+  - labs/week-3/cost-tracking-dashboard-langsmith
+  - labs/week-3/index
+  - labs/week-3/youtube-subtitles-topics-json-pipeline
+  - labs/week-4/capstone-bs-degree-chatbot
+  - labs/week-4/capstone-policy-chatbot
+  - labs/week-4/index
+  - labs/week-4/ragas-evaluation-dashboard
+  - labs/week-5/capstone-autonomous-research-agent
+  - labs/week-5/capstone-vivaagent-oral-examiner
+  - labs/week-5/context-based-extraction-tool
+  - labs/week-5/index
+  - labs/week-6/capstone-ai-signature-detection-cropper
+  - labs/week-6/capstone-job-posting-scraper-tracker
+  - labs/week-6/capstone-live-multilingual-travel-translator
+  - labs/week-6/index
+  - labs/week-6/scheduled-scraper-github-actions-cron
+  - labs/week-7/full-cicd-cloud-run
+  - labs/week-7/index
+  - labs/week-7/red-team-your-api-guardrails
+  - labs/week-8/capstone-production-finetuned-model-mlops
+  - labs/week-8/full-gcp-pipeline-bqml-vertex-cloud-run
+  - labs/week-8/index
+  - projects/index
+  - projects/project-1
+  - projects/project-2
+  - projects/project-3
+  - reference/command-cheatsheet
+  - reference/index
+  - reference/tools-glossary
+  - syllabus
+  - technology-stack
+  - week-1/bash-scripting
+  - week-1/data-formats
+  - week-1/git-github
+  - week-1/github-pages
+  - week-1/http-clients
+  - week-1/index
+  - week-1/requestly
+  - week-1/sqlite
+  - week-1/uv
+  - week-1/uv-cli-tool-latex-docs
+  - week-1/vscode
+  - week-2/cloudflare-tunnels
+  - week-2/config-management
+  - week-2/cors-middleware
+  - week-2/deployment-platforms
+  - week-2/docker-compose
+  - week-2/fastapi
+  - week-2/fastapi-advanced
+  - week-2/google-oauth
+  - week-2/index
+  - week-2/local-llms
+  - week-2/logging-testing
+  - week-2/observability
+  - week-2/redis-caching
+  - week-3/ai-coding-assistants
+  - week-3/context-engineering
+  - week-3/index
+  - week-3/langsmith-litellm
+  - week-3/llm-architecture-survey
+  - week-3/llm-cli-tools
+  - week-3/multimodal-inputs
+  - week-3/prompt-caching
+  - week-3/prompt-engineering
+  - week-3/similarity-search
+  - week-3/structured-output
+  - week-3/vector-embeddings
+  - week-4/chunking-strategies
+  - week-4/contextual-retrieval
+  - week-4/graphrag
+  - week-4/hybrid-search
+  - week-4/index
+  - week-4/late-chunking
+  - week-4/llm-grounding
+  - week-4/multimodal-embeddings
+  - week-4/query-augmentation
+  - week-4/ragas-evaluation
+  - week-4/reranking
+  - week-4/semantic-caching
+  - week-4/vector-databases
+  - week-5/agent-evaluation
+  - week-5/agent-fundamentals
+  - week-5/agent-memory-systems
+  - week-5/async-parallelism
+  - week-5/custom-mcp-servers
+  - week-5/index
+  - week-5/langgraph
+  - week-5/lxd-sandboxing
+  - week-5/mcp
+  - week-5/multi-agent-systems
+  - week-5/specialized-agents
+  - week-5/tool-calling
+  - week-6/anti-bot-patterns
+  - week-6/crawl4ai
+  - week-6/document-parsing
+  - week-6/duckdb-parquet
+  - week-6/firecrawl-apify
+  - week-6/firestore
+  - week-6/image-processing-pipeline
+  - week-6/index
+  - week-6/llm-architecture
+  - week-6/playwright-selenium
+  - week-6/scheduled-scraping
+  - week-6/scrapy
+  - week-6/speech-ai
+  - week-6/video-understanding
+  - week-6/vision-models-for-scraping
+  - week-7/advanced-docker
+  - week-7/cost-alerting
+  - week-7/github-actions-advanced
+  - week-7/index
+  - week-7/llm-safety-defensive
+  - week-7/llm-security-offensive
+  - week-7/owasp-llm-top-10
+  - week-7/pubsub-event-driven
+  - week-7/serverless-functions
+  - week-7/terraform-iac
+  - week-7/vms-ssh
+  - week-8/bigquery-ml
+  - week-8/cloud-storage-ml
+  - week-8/finetuning-strategy
+  - week-8/finetuning-techniques
+  - week-8/gcp-ml-pipeline
+  - week-8/gemma4-finetuning
+  - week-8/huggingface-ecosystem
+  - week-8/index
+  - week-8/mlflow
+  - week-8/model-publishing
+  - week-8/quantization
+  
+      at Object.checkSidebarsDocIds (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/plugin-content-docs/lib/sidebars/utils.js:245:19)
+      at doLoadVersion (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/plugin-content-docs/lib/versions/loadVersion.js:102:19)
+      at async loadVersion (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/plugin-content-docs/lib/versions/loadVersion.js:119:16)
+      at async Promise.all (index 0)
+      at async Object.loadContent (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/plugin-content-docs/lib/index.js:152:33)
+      at async /home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/server/plugins/plugins.js:40:23
+      at async Promise.all (index 0)
+      at async /home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/server/plugins/plugins.js:146:25
+      at async loadSite (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/server/site.js:163:45)
+      at async buildLocale (/home/bitu/Documents/Jan2026/TDS/tds-course/node_modules/@docusaurus/core/lib/commands/build/buildLocale.js:34:18)
+}
+[INFO] Docusaurus version: 3.10.0
+Node version: v24.15.0

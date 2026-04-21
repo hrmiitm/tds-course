@@ -1,0 +1,953 @@
+---
+sidebar_position: 3
+title: "Lab 2.2 — FastAPI Observability + Live Grafana Dashboard"
+description: Instrument a FastAPI service with Prometheus metrics and OpenTelemetry traces, then build a live Grafana dashboard with alerts.
+---
+
+import { YouTube } from '@site/src/components/YouTube';
+
+# Lab 2.2 — FastAPI Observability + Live Grafana Dashboard
+
+**What you'll build:** A fully instrumented FastAPI service with:
+- Prometheus metrics (request count, latency, error rate, custom counters)
+- OpenTelemetry distributed traces exported to Jaeger
+- Live Grafana dashboard with 6 panels
+- An alert rule that fires when the error rate exceeds 5%
+
+**Final result:**
+
+```
+FastAPI (port 8000)
+  ├── /metrics  ←── Prometheus (port 9090, scrapes every 15s)
+  └── OTLP traces ──→ Jaeger (port 16686)
+                           ↓
+                       Grafana (port 3000) — dashboards + alerts
+```
+
+---
+
+<details>
+<summary>**Step 1 — Project Setup**</summary>
+
+```bash
+mkdir tds-lab-2-observability
+cd tds-lab-2-observability
+uv init --no-workspace
+```
+
+Install dependencies:
+
+```bash
+uv add fastapi "uvicorn[standard]" \
+       prometheus-fastapi-instrumentator \
+       prometheus-client \
+       opentelemetry-api \
+       opentelemetry-sdk \
+       opentelemetry-instrumentation-fastapi \
+       "opentelemetry-exporter-otlp-proto-grpc>=1.24" \
+       httpx \
+       structlog
+```
+
+Create the project structure:
+
+```
+tds-lab-2-observability/
+├── main.py
+├── telemetry.py
+├── docker-compose.yml
+├── prometheus.yml
+├── otel-collector.yml
+└── grafana/
+    ├── datasources/
+    │   └── datasources.yml
+    └── dashboards/
+        ├── dashboards.yml
+        └── tds-api.json
+```
+
+</details>
+
+<details>
+<summary>**Step 2 — Write the Telemetry Module**</summary>
+
+```python title="telemetry.py"
+"""
+Sets up OpenTelemetry tracing.
+Call setup_telemetry(app) once at startup.
+"""
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+import os
+
+# Try to import OTLP exporter — gracefully skip if not available
+try:
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    OTLP_AVAILABLE = True
+except ImportError:
+    OTLP_AVAILABLE = False
+
+OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+
+_tracer: trace.Tracer | None = None
+
+
+def setup_telemetry(app, service_name: str = "tds-api") -> trace.Tracer:
+    global _tracer
+
+    resource = Resource(attributes={SERVICE_NAME: service_name})
+    provider = TracerProvider(resource=resource)
+
+    if OTLP_AVAILABLE:
+        try:
+            exporter = OTLPSpanExporter(endpoint=OTLP_ENDPOINT, insecure=True)
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+            print(f"✅ OpenTelemetry traces → {OTLP_ENDPOINT}")
+        except Exception as e:
+            print(f"⚠️  OTLP exporter failed: {e}. Traces will be discarded.")
+    else:
+        print("⚠️  OTLP exporter not installed. Traces discarded.")
+
+    trace.set_tracer_provider(provider)
+
+    # Auto-instrument all FastAPI routes
+    FastAPIInstrumentor.instrument_app(app)
+
+    _tracer = trace.get_tracer(service_name)
+    return _tracer
+
+
+def get_tracer() -> trace.Tracer:
+    if _tracer is None:
+        return trace.get_tracer("tds-api")
+    return _tracer
+```
+
+</details>
+
+<details>
+<summary>**Step 3 — Write the Instrumented FastAPI App**</summary>
+
+This app simulates a realistic API with different endpoints, including some that can fail, so we have interesting metrics to observe.
+
+```python title="main.py"
+import asyncio
+import random
+import time
+import structlog
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Request, Depends
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Histogram, Gauge
+from pydantic import BaseModel
+from telemetry import setup_telemetry, get_tracer
+
+log = structlog.get_logger()
+
+# ── Custom Prometheus metrics ──────────────────────────────────
+
+llm_requests = Counter(
+    "llm_requests_total",
+    "Total LLM API calls by model and status",
+    ["model", "status"],
+)
+
+llm_duration = Histogram(
+    "llm_duration_seconds",
+    "LLM response duration in seconds",
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, float("inf")],
+    labelnames=["model"],
+)
+
+active_sessions = Gauge(
+    "active_sessions_total",
+    "Number of active user sessions",
+)
+
+db_query_duration = Histogram(
+    "db_query_duration_seconds",
+    "Database query duration",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, float("inf")],
+    labelnames=["operation"],
+)
+
+cache_operations = Counter(
+    "cache_operations_total",
+    "Cache hit/miss counts",
+    ["result"],
+)
+
+
+# ── App setup ──────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log.info("API starting up")
+    active_sessions.set(0)   # reset on startup
+    yield
+    log.info("API shutting down")
+
+app = FastAPI(
+    title="TDS Lab 2.2 — Observable API",
+    description="A FastAPI service instrumented with Prometheus and OpenTelemetry",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Auto-instrument all routes with Prometheus
+Instrumentator(
+    should_group_status_codes=False,
+    excluded_handlers=["/metrics", "/health"],
+).instrument(app).expose(app)
+
+# Set up OpenTelemetry
+tracer = setup_telemetry(app, service_name="tds-api")
+
+
+# ── Simulated services ─────────────────────────────────────────
+
+async def simulate_db_query(operation: str, min_ms: int = 5, max_ms: int = 50):
+    """Simulate a database query with realistic latency"""
+    duration = random.uniform(min_ms / 1000, max_ms / 1000)
+    await asyncio.sleep(duration)
+    with db_query_duration.labels(operation=operation).time():
+        pass  # timing already captured above
+    return duration
+
+
+async def simulate_llm_call(model: str = "gemma3") -> dict:
+    """Simulate an LLM API call with occasional failures"""
+    start = time.time()
+    # Simulate 10% failure rate
+    if random.random() < 0.10:
+        llm_requests.labels(model=model, status="error").inc()
+        raise HTTPException(503, "LLM service temporarily unavailable")
+
+    # Simulate variable latency (0.5s to 3s)
+    await asyncio.sleep(random.uniform(0.5, 3.0))
+    duration = time.time() - start
+
+    llm_requests.labels(model=model, status="success").inc()
+    llm_duration.labels(model=model).observe(duration)
+
+    return {"text": "Simulated LLM response", "tokens": random.randint(50, 300)}
+
+
+# ── Routes ─────────────────────────────────────────────────────
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": "1.0.0"}
+
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+
+@app.get("/users")
+async def list_users(request: Request):
+    """List users — simulates a DB query"""
+    with tracer.start_as_current_span("list-users") as span:
+        span.set_attribute("http.route", "/users")
+
+        # Check cache first (simulated)
+        cache_hit = random.random() > 0.3   # 70% cache hit rate
+        if cache_hit:
+            cache_operations.labels(result="hit").inc()
+            span.set_attribute("cache.hit", True)
+            return [{"id": i, "name": f"User {i}"} for i in range(1, 6)]
+
+        cache_operations.labels(result="miss").inc()
+        span.set_attribute("cache.hit", False)
+
+        with tracer.start_as_current_span("db-query"):
+            await simulate_db_query("SELECT", min_ms=10, max_ms=80)
+
+        return [{"id": i, "name": f"User {i}"} for i in range(1, 6)]
+
+@app.post("/users", status_code=201)
+async def create_user(user: UserCreate):
+    """Create a user — simulates DB write"""
+    with tracer.start_as_current_span("create-user") as span:
+        span.set_attribute("user.email", user.email)
+
+        with tracer.start_as_current_span("db-insert"):
+            await simulate_db_query("INSERT", min_ms=15, max_ms=60)
+
+        active_sessions.inc()
+        return {"id": random.randint(100, 999), "name": user.name, "email": user.email}
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    model: str = "gemma3"
+
+@app.post("/generate")
+async def generate(req: GenerateRequest):
+    """Generate text — simulates an LLM call with 10% error rate"""
+    with tracer.start_as_current_span("generate-text") as span:
+        span.set_attribute("llm.model", req.model)
+        span.set_attribute("prompt.length", len(req.prompt))
+
+        result = await simulate_llm_call(req.model)
+
+        span.set_attribute("response.tokens", result["tokens"])
+        return result
+
+@app.get("/search")
+async def search(q: str, limit: int = 10):
+    """Search endpoint — variable latency based on query"""
+    with tracer.start_as_current_span("search") as span:
+        span.set_attribute("query", q)
+        span.set_attribute("limit", limit)
+
+        # Longer queries take longer
+        await simulate_db_query("SEARCH", min_ms=20, max_ms=min(200, len(q) * 5))
+
+        return {"query": q, "results": [], "total": 0}
+
+@app.delete("/users/{user_id}", status_code=204)
+async def delete_user(user_id: int):
+    """Delete user — simulates DB delete"""
+    with tracer.start_as_current_span("delete-user") as span:
+        span.set_attribute("user.id", user_id)
+
+        if user_id > 1000:
+            raise HTTPException(404, f"User {user_id} not found")
+
+        await simulate_db_query("DELETE", min_ms=5, max_ms=30)
+        active_sessions.dec()
+```
+
+</details>
+
+<details>
+<summary>**Step 4 — Docker Compose for the Full Stack**</summary>
+
+```yaml title="docker-compose.yml"
+version: "3.9"
+
+services:
+
+  # ── FastAPI App ──────────────────────────────────────────────
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── OpenTelemetry Collector ──────────────────────────────────
+  # Receives OTLP traces from FastAPI, forwards to Jaeger
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "8888:8888"    # Collector metrics
+    volumes:
+      - ./otel-collector.yml:/etc/otelcol-contrib/config.yaml
+    restart: unless-stopped
+
+  # ── Prometheus ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+
+  # ── Grafana ──────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # ── Jaeger (Trace Visualization) ─────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "14250:14250"   # gRPC for collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+```
+
+</details>
+
+<details>
+<summary>**Step 5 — Configuration Files**</summary>
+
+**Prometheus config:**
+
+```yaml title="prometheus.yml"
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert rules (we'll add these in Step 8)
+rule_files:
+  - "alert-rules.yml"
+
+scrape_configs:
+  - job_name: "fastapi"
+    static_configs:
+      - targets: ["api:8000"]
+    metrics_path: "/metrics"
+
+  - job_name: "otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8888"]
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+```
+
+**OpenTelemetry Collector config:**
+
+```yaml title="otel-collector.yml"
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger, debug]
+```
+
+**Grafana datasources auto-provisioning:**
+
+```yaml title="grafana/datasources/datasources.yml"
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: false
+```
+
+**Grafana dashboards provisioning:**
+
+```yaml title="grafana/dashboards/dashboards.yml"
+apiVersion: 1
+
+providers:
+  - name: TDS Course
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
+```
+
+**Write the Dockerfile:**
+
+```dockerfile title="Dockerfile"
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install uv
+
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --frozen --no-dev
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+</details>
+
+<details>
+<summary>**Step 6 — Start the Stack and Generate Traffic**</summary>
+
+```bash
+# Start all services
+docker compose up --build -d
+
+# Check all are running
+docker compose ps
+
+# Expected output:
+# NAME               STATUS          PORTS
+# api                running         0.0.0.0:8000->8000/tcp
+# prometheus         running         0.0.0.0:9090->9090/tcp
+# grafana            running         0.0.0.0:3000->3000/tcp
+# jaeger             running         0.0.0.0:16686->16686/tcp
+# otel-collector     running         ...
+
+# Check API is up
+curl http://localhost:8000/health
+```
+
+Now generate traffic so Prometheus has data to visualize. Create a load generator script:
+
+```python title="load_test.py"
+"""
+Run this to generate realistic traffic for your dashboard.
+"""
+import httpx
+import asyncio
+import random
+
+BASE_URL = "http://localhost:8000"
+
+async def generate_traffic():
+    async with httpx.AsyncClient(timeout=30) as client:
+        while True:
+            tasks = []
+
+            # Simulate realistic traffic mix
+            for _ in range(random.randint(1, 5)):
+                roll = random.random()
+                if roll < 0.30:
+                    tasks.append(client.get(f"{BASE_URL}/users"))
+                elif roll < 0.50:
+                    tasks.append(client.get(f"{BASE_URL}/search?q=python&limit=10"))
+                elif roll < 0.70:
+                    tasks.append(client.post(
+                        f"{BASE_URL}/generate",
+                        json={"prompt": "Tell me about FastAPI", "model": "gemma3"},
+                    ))
+                elif roll < 0.85:
+                    tasks.append(client.post(
+                        f"{BASE_URL}/users",
+                        json={"name": "Test User", "email": "test@example.com"},
+                    ))
+                else:
+                    tasks.append(client.delete(
+                        f"{BASE_URL}/users/{random.randint(1, 1500)}"  # some 404s
+                    ))
+
+            # Send all requests concurrently
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            successes = sum(1 for r in results if not isinstance(r, Exception))
+            print(f"Batch: {successes}/{len(tasks)} succeeded")
+
+            await asyncio.sleep(0.5)  # 2 batches/second
+
+asyncio.run(generate_traffic())
+```
+
+Run it in a separate terminal:
+```bash
+python load_test.py
+```
+
+Let it run for a few minutes before setting up Grafana dashboards.
+
+</details>
+
+<details>
+<summary>**Step 7 — Verify Metrics and Traces**</summary>
+
+**Check Prometheus is scraping:**
+
+1. Open http://localhost:9090
+2. Go to **Status → Targets** — `api:8000` should show **UP**
+3. Try a query in the **Graph** tab:
+
+```promql
+# Total requests (should grow)
+http_requests_total
+
+# Request rate (requests per second)
+rate(http_requests_total[1m])
+
+# Your LLM custom metric
+llm_requests_total
+```
+
+**Check Jaeger traces:**
+
+1. Open http://localhost:16686
+2. Service dropdown → select `tds-api`
+3. Click **Find Traces**
+4. Click any trace to see the waterfall view
+
+You should see spans like:
+```
+generate-text (1.2s)
+  └── (auto) POST /generate
+```
+
+And for `/users`:
+```
+list-users (45ms)
+  ├── db-query (40ms)   OR
+  └── (cache hit — no DB span)
+```
+
+**Verify custom metrics at `/metrics`:**
+
+```bash
+curl http://localhost:8000/metrics | grep -E "llm_|cache_|active_sessions|db_query"
+```
+
+Expected output:
+```
+# HELP llm_requests_total Total LLM API calls by model and status
+# TYPE llm_requests_total counter
+llm_requests_total{model="gemma3",status="success"} 47.0
+llm_requests_total{model="gemma3",status="error"} 5.0
+# HELP cache_operations_total Cache hit/miss counts
+cache_operations_total{result="hit"} 89.0
+cache_operations_total{result="miss"} 41.0
+# HELP active_sessions_total Number of active user sessions
+active_sessions_total 23.0
+```
+
+</details>
+
+<details>
+<summary>**Step 8 — Build the Grafana Dashboard**</summary>
+
+Open http://localhost:3000 (admin/admin).
+
+**Create a new dashboard:** Dashboards → New Dashboard → Add visualization
+
+Build these 6 panels:
+
+---
+
+**Panel 1 — Request Rate**
+- Visualization: Time series
+- Title: `Requests per Second`
+- Query:
+```promql
+sum(rate(http_requests_total[1m])) by (handler)
+```
+- Legend: `{{handler}}`
+
+---
+
+**Panel 2 — Error Rate (%)**
+- Visualization: Stat
+- Title: `Error Rate`
+- Query:
+```promql
+sum(rate(http_requests_total{status=~"5.."}[5m]))
+/ sum(rate(http_requests_total[5m])) * 100
+```
+- Unit: `Percent (0-100)`
+- Thresholds: 0=green, 5=yellow, 10=red
+
+---
+
+**Panel 3 — P50 / P95 / P99 Latency**
+- Visualization: Time series
+- Title: `Response Latency Percentiles`
+- Queries (add 3):
+```promql
+# P50
+histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, handler))
+
+# P95
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, handler))
+
+# P99
+histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, handler))
+```
+- Unit: `seconds (s)`
+
+---
+
+**Panel 4 — LLM Success vs Error**
+- Visualization: Pie chart
+- Title: `LLM Calls — Success vs Error`
+- Query:
+```promql
+sum(llm_requests_total) by (status)
+```
+
+---
+
+**Panel 5 — Cache Hit Rate**
+- Visualization: Gauge
+- Title: `Cache Hit Rate`
+- Query:
+```promql
+sum(cache_operations_total{result="hit"})
+/ sum(cache_operations_total) * 100
+```
+- Unit: `Percent (0-100)`
+- Min: 0, Max: 100
+
+---
+
+**Panel 6 — Active Sessions**
+- Visualization: Stat
+- Title: `Active Sessions`
+- Query:
+```promql
+active_sessions_total
+```
+
+---
+
+**Save the dashboard:** Click **Save** → Name: `TDS API Dashboard`
+
+</details>
+
+<details>
+<summary>**Step 9 — Set Up an Alert Rule**</summary>
+
+In Grafana (version 9+), alerts are in **Alerting → Alert rules**.
+
+1. Go to **Alerting → Alert rules → New alert rule**
+
+2. **Rule name:** `High Error Rate`
+
+3. **Query A:**
+```promql
+sum(rate(http_requests_total{status=~"5.."}[5m]))
+/ sum(rate(http_requests_total[5m])) * 100
+```
+
+4. **Conditions:**
+   - WHEN: `last()` of query A
+   - IS ABOVE: `5`    *(alert when error rate > 5%)*
+
+5. **Evaluation:**
+   - Evaluate every: `1m`
+   - For: `2m`   *(must stay above threshold for 2 minutes)*
+
+6. **Annotations:**
+   - Summary: `Error rate is {{ $values.A.Value | printf "%.1f" }}% — above 5% threshold`
+
+7. Click **Save rule and exit**
+
+---
+
+**Trigger the alert to test it:**
+
+In `load_test.py`, temporarily force errors by calling a non-existent endpoint:
+
+```python
+# Add this to generate_traffic() for 2 minutes
+tasks.append(client.post(
+    f"{BASE_URL}/generate",
+    json={"prompt": "x" * 1},   # will hit the 10% error rate more often
+))
+```
+
+Watch **Alerting → Alert rules** — the rule should go from `Normal` → `Pending` → `Firing` after 2 minutes of high error rate.
+
+</details>
+
+<details>
+<summary>**Step 10 — Export Dashboard as JSON**</summary>
+
+Save the dashboard as a JSON file so it can be version-controlled and auto-provisioned:
+
+1. In Grafana, open your dashboard
+2. Click the **Share** icon (top right) → **Export**
+3. Click **Save to file** → saves `tds-api-dashboard.json`
+4. Move it to `grafana/dashboards/tds-api.json`
+
+Now when you run `docker compose up`, Grafana automatically loads your dashboard. No manual setup needed.
+
+Update `grafana/dashboards/dashboards.yml` to include it:
+
+```yaml
+apiVersion: 1
+providers:
+  - name: TDS Course
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
+    allowUiUpdates: true
+```
+
+Test auto-provisioning:
+```bash
+docker compose down -v    # clean slate
+docker compose up -d      # fresh start
+# Wait 30s, then open http://localhost:3000
+# Dashboard should be there automatically
+```
+
+</details>
+
+<details>
+<summary>**Step 11 — Write the Alert Rules File**</summary>
+
+For production-grade alerting, define rules in a YAML file instead of Grafana UI:
+
+```yaml title="alert-rules.yml"
+groups:
+  - name: tds-api-alerts
+    interval: 1m
+    rules:
+      # Alert when error rate > 5%
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate"
+          description: "Error rate is {{ $value | printf `%.1f` }}% (threshold: 5%)"
+
+      # Alert when P99 latency > 2 seconds
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 API latency above 2s"
+
+      # Alert when LLM error rate > 20%
+      - alert: LLMHighErrorRate
+        expr: |
+          sum(rate(llm_requests_total{status="error"}[5m]))
+          / sum(rate(llm_requests_total[5m])) * 100 > 20
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM service error rate above 20%"
+```
+
+Mount it in the Prometheus container (update `docker-compose.yml`):
+
+```yaml
+prometheus:
+  volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./alert-rules.yml:/etc/prometheus/alert-rules.yml   # ← add this
+    - prometheus_data:/prometheus
+```
+
+Reload Prometheus config:
+```bash
+curl -X POST http://localhost:9090/-/reload
+```
+
+Check alerts are loaded:
+```bash
+curl http://localhost:9090/api/v1/rules | python -m json.tool
+```
+
+</details>
+
+---
+
+## Final Checklist
+
+Verify each item before submitting:
+
+- [ ] `docker compose ps` — all 5 services are **running**
+- [ ] `curl localhost:8000/metrics` — returns Prometheus metrics
+- [ ] `curl localhost:8000/metrics | grep llm_requests` — custom metrics visible
+- [ ] http://localhost:9090/targets — `api:8000` shows **UP**
+- [ ] http://localhost:16686 — Jaeger shows traces from `tds-api`
+- [ ] http://localhost:3000 — Grafana dashboard shows all 6 panels with data
+- [ ] Alert rule exists and transitions to **Pending** when error rate spikes
+- [ ] Dashboard exported to `grafana/dashboards/tds-api.json`
+
+---
+
+## Deliverables
+
+Submit on the course portal:
+
+1. **GitHub repo URL** with all code + config files
+2. **Screenshots** (combine in a single PDF or image):
+   - Prometheus Targets page showing `api:8000 UP`
+   - Grafana dashboard with all 6 panels showing live data
+   - Jaeger trace waterfall for a `/generate` request
+   - Alert rule in Grafana Alerting page
+3. **Brief write-up** (max 200 words): What does P99 latency mean? How would you use this dashboard to diagnose a production incident?
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `api:8000` DOWN in Prometheus | Check `docker compose logs api` for startup errors |
+| No traces in Jaeger | Check `docker compose logs otel-collector` for errors |
+| Grafana shows "No data" | Wait 2+ minutes for data to accumulate, run `load_test.py` |
+| Dashboard panels show errors | Verify datasource URL is `http://prometheus:9090` (not localhost) |
+| Alert never fires | Make sure `alert-rules.yml` is mounted and Prometheus reloaded |
+
+---
+
+## Going Further
+
+- Add Loki for log aggregation: store structlog JSON logs, query in Grafana
+- Add a `/metrics` dashboard panel showing cache hit rate over time
+- Set up Grafana to send email/Slack alerts when rules fire
+- Add `http_request_size_bytes` and `http_response_size_bytes` panels
+- Track LLM token usage as a custom histogram
