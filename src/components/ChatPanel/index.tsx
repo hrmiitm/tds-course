@@ -183,6 +183,10 @@ function parseModelList(raw: string): string[] {
   return parsed.length > 0 ? parsed : ['google/gemma-3-27b-it'];
 }
 
+function normalizeBaseUrlForCompare(url: string): string {
+  return (url || '').trim().replace(/\/+$/g, '').toLowerCase();
+}
+
 function createDefaultProvider(): ChatProvider {
   const model = 'google/gemma-3-27b-it';
   return {
@@ -191,6 +195,27 @@ function createDefaultProvider(): ChatProvider {
     apiKey: '',
     models: [model],
     activeModel: model,
+  };
+}
+
+function createAIPipeOpenRouterProvider(): ChatProvider {
+  const models = [
+    'openai/gpt-5.4-nano',
+    'openai/gpt-5.4-mini',
+    'openai/gpt-5.4-pro',
+    'openai/gpt-5.3-codex',
+    'anthropic/claude-sonnet-4.6',
+    'anthropic/claude-opus-4.7',
+    'moonshotai/kimi-k2.6',
+    'openai/o4-mini-deep-research',
+    'perplexity/sonar-deep-research',
+  ];
+  return {
+    id: makeId('provider'),
+    baseUrl: 'https://aipipe.org/openrouter/v1',
+    apiKey: '',
+    models,
+    activeModel: models[0],
   };
 }
 
@@ -260,13 +285,13 @@ function normalizeSession(raw: unknown): ChatSession | null {
 }
 
 function loadChatState(): ChatState {
-  const fallbackProvider = createDefaultProvider();
+  const fallbackProviders = [createDefaultProvider(), createAIPipeOpenRouterProvider()];
   const fallbackSession = createSession();
   const fallback: ChatState = {
     sessions: [fallbackSession],
     activeSessionId: fallbackSession.id,
-    providers: [fallbackProvider],
-    activeProviderId: fallbackProvider.id,
+    providers: fallbackProviders,
+    activeProviderId: fallbackProviders[0].id,
   };
   const raw = loadFromStorage<unknown>(CHAT_STATE_KEY, null);
   if (!isRecord(raw)) return fallback;
@@ -274,7 +299,11 @@ function loadChatState(): ChatState {
   const providers = Array.isArray(raw.providers)
     ? raw.providers.map(normalizeProvider).filter((p): p is ChatProvider => Boolean(p))
     : [];
-  const safeProviders = providers.length > 0 ? providers : [fallbackProvider];
+  const safeProvidersBase = providers.length > 0 ? providers : fallbackProviders;
+  const shouldAddAIPipe = !safeProvidersBase.some(
+    (p) => normalizeBaseUrlForCompare(p.baseUrl) === normalizeBaseUrlForCompare('https://aipipe.org/openrouter/v1'),
+  );
+  const safeProviders = shouldAddAIPipe ? [...safeProvidersBase, createAIPipeOpenRouterProvider()] : safeProvidersBase;
 
   const sessions = Array.isArray(raw.sessions)
     ? raw.sessions.map(normalizeSession).filter((s): s is ChatSession => Boolean(s))
@@ -443,7 +472,7 @@ async function runContextCompletion(params: {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${params.provider.apiKey.trim()}`,
   };
-  if (params.provider.baseUrl.includes('openrouter.ai')) {
+  if (params.provider.baseUrl.includes('openrouter')) {
     headers['HTTP-Referer'] = window.location.origin;
     headers['X-Title'] = 'TDS Course Assistant';
   }

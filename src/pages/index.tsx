@@ -37,107 +37,188 @@ type Week = {
 };
 
 
-const TOPIC_CHIPS = ['Python', 'Docker', 'LLMs', 'RAG', 'Agents', 'GCP', 'FastAPI'];
+const TOPIC_CHIPS = ['UV', 'FastAPI', 'Docker', 'LLMs', 'RAG', 'Agents', 'MLOps'];
 
 const WEEKS: Week[] = [
   {
     id: 1,
-    title: 'Dev Env',
-    description: 'Set up VS Code, uv, Bash automation, Git workflows, SQLite and GitHub Pages.',
+    title: 'Tooling',
+    description:
+      'VS Code, UV, Bash automation, Git, SQLite, HTTP clients, data formats, and publishing workflows.',
     href: '/week-1',
     hours: 8,
-    topicsCount: 6,
-    topics: ['VS Code setup', 'uv Python', 'Bash scripting', 'Git & GitHub', 'SQLite', 'GitHub Pages'],
+    topicsCount: 10,
+    topics: [
+      'VS Code',
+      'UV',
+      'Bash scripting',
+      'Git & GitHub',
+      'SQLite',
+      'HTTP clients',
+      'Requestly',
+      'Data formats',
+      'GitHub Pages',
+      'LaTeX',
+    ],
     phase: 'foundations',
   },
   {
     id: 2,
-    title: 'Deploy & APIs',
-    description: 'FastAPI, Docker, deployments, CORS/REST, auth and shipping real services.',
+    title: 'APIs',
+    description: 'FastAPI, Docker, auth, observability, caching, and deploying real services.',
     href: '/week-2',
     hours: 9,
-    topicsCount: 6,
-    topics: ['FastAPI', 'Docker', 'Vercel/Render', 'HuggingFace', 'CORS & REST', 'Google Auth'],
+    topicsCount: 12,
+    topics: [
+      'FastAPI',
+      'CORS & middleware',
+      'Google OAuth 2.0',
+      'FastAPI advanced',
+      'Config management',
+      'Docker & Compose',
+      'Deployment platforms',
+      'Logging & testing',
+      'Observability',
+      'Cloudflare tunnels',
+      'Local LLMs',
+      'Redis caching',
+    ],
     phase: 'foundations',
   },
   {
     id: 3,
     title: 'LLMs',
-    description: 'Prompting, structured output, extraction, function calling, embeddings and caching.',
+    description:
+      'Prompt & context engineering, structured output, embeddings, similarity search, caching, and tracing.',
     href: '/week-3',
     hours: 10,
-    topicsCount: 8,
-    topics: ['Prompt engineering', 'Structured output', 'LLM extraction', 'Function calling', 'LLM CLI', 'Embeddings', 'Prompt caching', 'Instructor'],
+    topicsCount: 11,
+    topics: [
+      'Prompt engineering',
+      'Context engineering',
+      'LLM CLI tools',
+      'AI coding assistants',
+      'Structured output',
+      'Multimodal inputs',
+      'Vector embeddings',
+      'Similarity search',
+      'Prompt caching',
+      'LangSmith & LiteLLM',
+      'LLM architecture survey',
+    ],
     phase: 'ai-core',
   },
   {
     id: 4,
     title: 'RAG',
-    description: 'Chunking, vector DBs, hybrid search, reranking, evaluation and multimodal retrieval.',
+    description: 'Chunking, vector DBs, hybrid search, reranking, grounding, evaluation, and semantic caching.',
     href: '/week-4',
     hours: 10,
-    topicsCount: 8,
-    topics: ['Chunking', 'Vector DBs', 'Hybrid search', 'Reranking', 'RAG evaluation', 'Multimodal embeddings', 'Contextual retrieval', 'GraphRAG'],
+    topicsCount: 12,
+    topics: [
+      'Chunking strategies',
+      'Vector databases',
+      'Hybrid search',
+      'Query augmentation',
+      'Reranking',
+      'RAGAS evaluation',
+      'Multimodal embeddings',
+      'LLM grounding',
+      'Late chunking',
+      'GraphRAG',
+      'Contextual retrieval',
+      'Semantic caching',
+    ],
     phase: 'ai-core',
   },
   {
     id: 5,
     title: 'Agents',
-    description: 'Agent loops, Pydantic AI, MCP protocol/servers and stateful workflows.',
+    description: 'Agent loops, tool calling, async execution, LangGraph, MCP, memory, and evaluation.',
     href: '/week-5',
     hours: 10,
-    topicsCount: 6,
-    topics: ['LLM agents', 'Pydantic AI', 'MCP protocol', 'MCP server', 'Multimodal agents', 'LangGraph'],
-    phase: 'ai-core',
+    topicsCount: 11,
+    topics: [
+      'Agent fundamentals',
+      'Function / tool calling',
+      'Async & parallelism',
+      'LangGraph',
+      'MCP',
+      'Custom MCP servers',
+      'Specialized agents',
+      'Multi-agent systems',
+      'Agent memory systems',
+      'Sandboxing',
+      'Agent evaluation',
+    ],
+    phase: 'advanced',
   },
   {
     id: 6,
-    title: 'Vision',
-    description: 'Vision models, image processing, detection pipelines, audio processing and generation.',
+    title: 'Scraping',
+    description: 'Web scraping, document parsing, DuckDB/Parquet analytics, and multimodal data pipelines.',
     href: '/week-6',
     hours: 9,
-    topicsCount: 9,
-    topics: ['Vision models', 'Image processing', 'Grounding DINO', 'Audio processing', 'Image generation', 'Grounding DINO Tiny', 'ColPali', 'Polars', 'DuckDB + Parquet'],
+    topicsCount: 14,
+    topics: [
+      'Playwright & Selenium',
+      'Crawl4AI',
+      'Firecrawl & Apify',
+      'Scrapy',
+      'Anti-bot patterns',
+      'Scheduled scraping',
+      'Document parsing',
+      'DuckDB + Parquet',
+      'Firestore',
+      'Vision models for scraping',
+      'Image processing pipeline',
+      'Speech AI',
+      'Video understanding',
+      'LLM architecture',
+    ],
     phase: 'advanced',
   },
   {
     id: 7,
-    title: 'Finetune',
-    description: 'Finetuning strategy, Gemma adapters, HF ecosystem, packaging and publishing.',
+    title: 'CI/CD',
+    description: 'GitHub Actions, container security, red-teaming + guardrails, cloud infra basics, and IaC.',
     href: '/week-7',
     hours: 9,
-    topicsCount: 7,
-    topics: ['Finetuning strategy', 'Gemma finetuning', 'HF ecosystem', 'Python packaging', 'PyPI publishing', 'DPO finetuning', 'uv tools'],
-    phase: 'advanced',
-  },
-  {
-    id: 8,
-    title: 'CI/CD',
-    description: 'GitHub Actions, advanced Docker, guardrails and LLM security best practices.',
-    href: '/week-8',
-    hours: 8,
-    topicsCount: 6,
-    topics: ['GitHub Actions', 'Advanced Docker', 'LLM security', 'NeMo Guardrails', 'Security best practices', 'OpenClaw red-teaming'],
-    phase: 'advanced',
-  },
-  {
-    id: 9,
-    title: 'MLOps I',
-    description: 'Train + evaluate on GCP: MLflow, Vertex AI, pipelines, BigQuery ML and DVC.',
-    href: '/week-9',
-    hours: 9,
-    topicsCount: 5,
-    topics: ['MLflow', 'Vertex AI', 'Pipelines', 'BigQuery ML', 'Data versioning'],
+    topicsCount: 10,
+    topics: [
+      'GitHub Actions advanced',
+      'Advanced Docker',
+      'LLM security (offensive)',
+      'LLM safety (defensive)',
+      'OWASP LLM Top 10',
+      'VMs & SSH',
+      'Serverless functions',
+      'Terraform (IaC)',
+      'Cost alerting',
+      'Pub/Sub & event-driven',
+    ],
     phase: 'production',
   },
   {
-    id: 10,
-    title: 'MLOps II',
-    description: 'Deploy + monitor: Cloud Run, drift detection, Pub/Sub retraining and cost control.',
-    href: '/week-10',
+    id: 8,
+    title: 'MLOps',
+    description:
+      'MLflow, BigQuery ML, fine-tuning, quantization, Vertex AI pipelines, and publishing models responsibly.',
+    href: '/week-8',
     hours: 8,
-    topicsCount: 5,
-    topics: ['Cloud Run', 'Monitoring', 'Pub/Sub functions', 'Artifact Registry', 'Cost optimization'],
+    topicsCount: 10,
+    topics: [
+      'Cloud storage for ML',
+      'BigQuery ML',
+      'MLflow',
+      'Fine-tuning strategy',
+      'HuggingFace ecosystem',
+      'Fine-tuning techniques',
+      'Quantization',
+      'Gemma 4 fine-tuning',
+      'GCP ML pipeline',
+      'Model publishing',
+    ],
     phase: 'production',
   },
 ];
@@ -150,29 +231,159 @@ const PHASES: Array<{
   weeks: number[];
 }> = [
   { id: 'foundations', title: 'Foundations', subtitle: 'Weeks 1 & 2', accent: 'green', weeks: [1, 2] },
-  { id: 'ai-core', title: 'AI Core', subtitle: 'Weeks 3, 4 & 5', accent: 'orange', weeks: [3, 4, 5] },
-  { id: 'advanced', title: 'Advanced AI', subtitle: 'Weeks 6, 7 & 8', accent: 'red', weeks: [6, 7, 8] },
-  { id: 'production', title: 'Production', subtitle: 'Weeks 9 & 10', accent: 'teal', weeks: [9, 10] },
+  { id: 'ai-core', title: 'LLM + RAG', subtitle: 'Weeks 3 & 4', accent: 'orange', weeks: [3, 4] },
+  { id: 'advanced', title: 'Agents + Data', subtitle: 'Weeks 5 & 6', accent: 'red', weeks: [5, 6] },
+  { id: 'production', title: 'Production', subtitle: 'Weeks 7 & 8', accent: 'teal', weeks: [7, 8] },
 ];
 
 const LABS: Lab[] = [
-  { number: 1, title: 'ChatBot with FastAPI', difficulty: 'Easy', duration: '3h', href: '/labs/lab-01-chatbot' },
-  { number: 2, title: 'RAG ChatBot', difficulty: 'Medium', duration: '4h', href: '/labs/lab-02-rag-chatbot' },
-  { number: 3, title: 'Gemma4 Finetuning', difficulty: 'Hard', duration: '5h', href: '/labs/lab-03-finetuning' },
-  { number: 4, title: 'Hybrid RAG ChatBot', difficulty: 'Medium', duration: '4h', href: '/labs/lab-04-hybrid-rag' },
-  { number: 5, title: 'Signature Detection & Cropper', difficulty: 'Medium', duration: '3h', href: '/labs/lab-05-signature-detection' },
-  { number: 6, title: 'AI Agent + MCP', difficulty: 'Hard', duration: '5h', href: '/labs/lab-06-ai-agent-mcp' },
-  { number: 7, title: 'CI/CD Pipeline', difficulty: 'Medium', duration: '3h', href: '/labs/lab-07-cicd' },
-  { number: 8, title: 'Full MLOps on GCP', difficulty: 'Hard', duration: '6h', href: '/labs/lab-08-mlops-gcp' },
-  { number: 9, title: 'LLM Red-Teaming', difficulty: 'Hard', duration: '4h', href: '/labs/lab-09-llm-red-teaming' },
-  { number: 10, title: 'Instructor Extraction Loops', difficulty: 'Medium', duration: '3h', href: '/labs/lab-10-instructor-extraction' },
-  { number: 11, title: 'Prompt Caching & Cost Benchmarks', difficulty: 'Medium', duration: '2h', href: '/labs/lab-11-prompt-caching' },
-  { number: 12, title: 'Contextual Retrieval Upgrade', difficulty: 'Medium', duration: '4h', href: '/labs/lab-12-contextual-retrieval' },
-  { number: 13, title: 'GraphRAG Mini', difficulty: 'Hard', duration: '5h', href: '/labs/lab-13-graphrag' },
-  { number: 14, title: 'LangGraph Agent Workflow', difficulty: 'Hard', duration: '5h', href: '/labs/lab-14-langgraph' },
-  { number: 15, title: 'Polars + DuckDB Local Warehouse', difficulty: 'Medium', duration: '4h', href: '/labs/lab-15-polars-duckdb' },
-  { number: 16, title: 'Guardrails + Red-Team Regression', difficulty: 'Hard', duration: '5h', href: '/labs/lab-16-guardrails-redteam' },
-  { number: 17, title: 'System Design Review', difficulty: 'Hard', duration: '5h', href: '/labs/lab-17-system-design-review' },
+  {
+    number: 1,
+    title: 'Publish a Python library to PyPI (UV)',
+    difficulty: 'Medium',
+    duration: '3h',
+    href: '/labs/week-1/publish-python-library-pypi-uv',
+  },
+  {
+    number: 2,
+    title: 'UV CLI tool + LaTeX documentation PDF',
+    difficulty: 'Medium',
+    duration: '3h',
+    href: '/labs/week-1/uv-cli-tool-latex-docs',
+  },
+  {
+    number: 3,
+    title: 'Bash automation: daily project summary',
+    difficulty: 'Easy',
+    duration: '2h',
+    href: '/labs/week-1/bash-daily-project-summary',
+  },
+  {
+    number: 4,
+    title: 'Gemma API on HuggingFace Spaces (Google Auth)',
+    difficulty: 'Hard',
+    duration: '4h',
+    href: '/labs/week-2/gemma-api-hf-spaces-google-auth',
+  },
+  {
+    number: 5,
+    title: 'FastAPI observability + Grafana dashboard',
+    difficulty: 'Hard',
+    duration: '4h',
+    href: '/labs/week-2/fastapi-observability-grafana',
+  },
+  {
+    number: 6,
+    title: 'YouTube → subtitles → topics → timestamps + JSON',
+    difficulty: 'Medium',
+    duration: '4h',
+    href: '/labs/week-3/youtube-subtitles-topics-json-pipeline',
+  },
+  {
+    number: 7,
+    title: 'Cost-tracking dashboard (LangSmith)',
+    difficulty: 'Medium',
+    duration: '3h',
+    href: '/labs/week-3/cost-tracking-dashboard-langsmith',
+  },
+  {
+    number: 8,
+    title: 'CAPSTONE: BS Degree Chatbot (Hybrid RAG)',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-4/capstone-bs-degree-chatbot',
+  },
+  {
+    number: 9,
+    title: 'CAPSTONE: Policy Chatbot (Guardrails)',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-4/capstone-policy-chatbot',
+  },
+  {
+    number: 10,
+    title: 'RAGAS evaluation dashboard (Naive vs Hybrid vs Contextual)',
+    difficulty: 'Medium',
+    duration: '4h',
+    href: '/labs/week-4/ragas-evaluation-dashboard',
+  },
+  {
+    number: 11,
+    title: 'CAPSTONE: Autonomous Research Agent (LangGraph)',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-5/capstone-autonomous-research-agent',
+  },
+  {
+    number: 12,
+    title: 'CAPSTONE: VivaAgent — AI Oral Examiner',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-5/capstone-vivaagent-oral-examiner',
+  },
+  {
+    number: 13,
+    title: 'Context-based extraction tool (PDF/Web/Video)',
+    difficulty: 'Medium',
+    duration: '4h',
+    href: '/labs/week-5/context-based-extraction-tool',
+  },
+  {
+    number: 14,
+    title: 'CAPSTONE: Job posting scraper & tracker',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-6/capstone-job-posting-scraper-tracker',
+  },
+  {
+    number: 15,
+    title: 'CAPSTONE: AI signature detection & cropper',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-6/capstone-ai-signature-detection-cropper',
+  },
+  {
+    number: 16,
+    title: 'CAPSTONE: Live multilingual travel translator',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-6/capstone-live-multilingual-travel-translator',
+  },
+  {
+    number: 17,
+    title: 'Scheduled scraper (GitHub Actions cron → DuckDB/Parquet)',
+    difficulty: 'Medium',
+    duration: '4h',
+    href: '/labs/week-6/scheduled-scraper-github-actions-cron',
+  },
+  {
+    number: 18,
+    title: 'Red-team your API + add NeMo Guardrails',
+    difficulty: 'Hard',
+    duration: '4h',
+    href: '/labs/week-7/red-team-your-api-guardrails',
+  },
+  {
+    number: 19,
+    title: 'Full CI/CD to Cloud Run (Artifact Registry)',
+    difficulty: 'Hard',
+    duration: '5h',
+    href: '/labs/week-7/full-cicd-cloud-run',
+  },
+  {
+    number: 20,
+    title: 'CAPSTONE: Production fine-tuned model + full MLOps',
+    difficulty: 'Hard',
+    duration: '6h',
+    href: '/labs/week-8/capstone-production-finetuned-model-mlops',
+  },
+  {
+    number: 21,
+    title: 'Full GCP pipeline (GCS → BigQuery ML → Vertex AI → Cloud Run)',
+    difficulty: 'Hard',
+    duration: '5h',
+    href: '/labs/week-8/full-gcp-pipeline-bqml-vertex-cloud-run',
+  },
 ];
 
 function SectionHeader({
@@ -225,11 +436,11 @@ function Hero(): React.JSX.Element {
         <div className={styles.heroMeta}>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="green" />
-            10 Weeks
+            8 Weeks
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="orange" />
-            17 Labs
+            21 Hands-on
           </div>
           <div className={styles.metaItem}>
             <span className={styles.metaDot} data-accent="teal" />
@@ -320,7 +531,7 @@ function Features(): React.JSX.Element {
               <div className={styles.previewChat}>
                 <div className={styles.chatBubbleUser}>What does Week 5 cover?</div>
                 <div className={styles.chatBubbleBot}>
-                  Week 5 covers AI Agents: LLM agents, Pydantic AI, MCP Protocol, MCP Server, LangGraph, and multimodal agents.
+                  Week 5 covers Agentic AI: agent fundamentals, tool calling, async execution, LangGraph, MCP, memory, and evaluation.
                 </div>
               </div>
             }
@@ -494,7 +705,7 @@ function LabsSection(): React.JSX.Element {
           {LABS.map((lab) => (
             <Link key={lab.number} to={lab.href} className={styles.labCard}>
               <div className={styles.labIndex} aria-hidden="true">
-                <div className={styles.labIndexLabel}>Lab</div>
+                <div className={styles.labIndexLabel}>Hands-on</div>
                 <div className={styles.labIndexValue}>{lab.number}</div>
               </div>
 
@@ -570,7 +781,7 @@ export default function Home(): React.JSX.Element {
   return (
     <Layout
       title="TDS Course — Tools in Data Science"
-      description="Learn modern data science tools: development environments, LLMs, RAG, agents, and deployment — with hands-on labs and a clean, focused learning UI."
+      description="Learn modern data science tools: development environments, deployment, LLMs, RAG, agents, security, and MLOps — with hands-on labs and a clean, focused learning UI."
     >
       <main className={styles.page}>
         <Hero />

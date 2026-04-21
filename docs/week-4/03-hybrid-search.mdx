@@ -1,187 +1,27 @@
 ---
 title: Hybrid Search
-description: Combine dense and sparse retrieval for the best of both worlds
-sidebar_position: 3
+description: BM25/SPLADE + dense, RRF fusion
 ---
 
 # Hybrid Search
 
-Dense vector search (embeddings) excels at semantic similarity — finding content that *means* the same thing. Sparse search (BM25/keyword) excels at exact term matching — finding content that contains specific words. Hybrid search combines both for superior results.
+_This is placeholder content for **Week 04 — RAG & Hybrid RAG** (May 2026). Replace sections below with lecture notes, examples, and exercises._
 
-## Why Hybrid Search?
+## Why this matters
+- Dummy: what you can build after learning this
+- Dummy: what breaks in real systems if you skip this
 
-Consider these queries:
+## Key ideas (dummy)
+- Concept 1
+- Concept 2
+- Concept 3
 
-| Query | Best Retrieved By | Why |
-|-------|-------------------|-----|
-| "How does Docker networking work?" | Dense | Semantic match, no exact keyword needed |
-| "CVE-2024-1234 vulnerability" | Sparse | Exact ID, embedding may not capture it |
-| "Python RuntimeError in uvicorn" | Both | Semantic context + exact error name |
-| "Q4 2024 earnings report" | Sparse | Specific identifiers |
+## Hands-on (dummy)
+1. Do a 10-minute setup or experiment.
+2. Capture output / screenshots / commands.
+3. Write a short reflection in your Discourse blog.
 
-:::tip The 20% improvement
-Studies show hybrid search improves retrieval recall by 15-25% over either method alone. It catches the edge cases that each individual method misses.
-:::
-
-## BM25 — Sparse Retrieval
-
-BM25 (Best Match 25) is the standard algorithm for keyword-based search. It ranks documents based on term frequency, inverse document frequency, and document length:
-
-```python
-# Using rank_bm25 library
-# uv add rank-bm25
-
-from rank_bm25 import BM25Okapi
-import re
-
-def tokenize(text: str) -> list[str]:
-    """Simple tokenization: lowercase and split on non-alphanumeric."""
-    return re.findall(r'\w+', text.lower())
-
-documents = [
-    "Docker Compose orchestrates multiple containers for local development.",
-    "The Docker daemon manages container lifecycle and image building.",
-    "Kubernetes orchestrates containers at scale in production environments.",
-    "FastAPI builds REST APIs with automatic OpenAPI documentation.",
-    "Dockerfile best practices include multi-stage builds and .dockerignore.",
-]
-
-# Tokenize documents
-tokenized_docs = [tokenize(doc) for doc in documents]
-
-# Build BM25 index
-bm25 = BM25Okapi(tokenized_docs)
-
-# Search
-query = "Docker container management"
-tokenized_query = tokenize(query)
-scores = bm25.get_scores(tokenized_query)
-
-# Rank results
-ranked = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
-for doc, score in ranked:
-    print(f"[{score:.3f}] {doc}")
-```
-
-## Combining Dense and Sparse
-
-The key challenge is combining scores from two different systems. Three common approaches:
-
-### Approach 1: Reciprocal Rank Fusion (RRF)
-
-RRF merges ranked lists without normalizing scores:
-
-```python
-def reciprocal_rank_fusion(
-    dense_results: list[tuple[str, float]],
-    sparse_results: list[tuple[str, float]],
-    k: int = 60,
-) -> list[tuple[str, float]]:
-    """Combine ranked lists using Reciprocal Rank Fusion."""
-    rrf_scores = {}
-
-    # Add dense rankings
-    for rank, (doc_id, _) in enumerate(dense_results):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1 / (k + rank + 1)
-
-    # Add sparse rankings
-    for rank, (doc_id, _) in enumerate(sparse_results):
-        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + 1 / (k + rank + 1)
-
-    # Sort by combined score
-    sorted_results = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
-    return sorted_results
-
-# Example
-dense_results = [("doc1", 0.95), ("doc3", 0.87), ("doc5", 0.82)]
-sparse_results = [("doc2", 12.5), ("doc1", 11.3), ("doc4", 9.8)]
-
-combined = reciprocal_rank_fusion(dense_results, sparse_results)
-for doc_id, score in combined[:5]:
-    print(f"[{score:.5f}] {doc_id}")
-```
-
-### Approach 2: Score Normalization + Weighted Sum
-
-Normalize both score ranges to [0, 1] and combine with weights:
-
-```python
-def normalize_scores(scores: list[float]) -> list[float]:
-    """Min-max normalize scores to [0, 1]."""
-    min_s, max_s = min(scores), max(scores)
-    if max_s == min_s:
-        return [1.0] * len(scores)
-    return [(s - min_s) / (max_s - min_s) for s in scores]
-
-def hybrid_search(
-    query: str,
-    dense_weight: float = 0.7,
-    sparse_weight: float = 0.3,
-) -> list[tuple[str, float]]:
-    """Perform hybrid search combining dense and sparse retrieval."""
-    # Dense search (pseudo-code — use your vector DB)
-    dense_results = vector_search(query, top_k=20)  # [(doc_id, score), ...]
-
-    # Sparse search (BM25)
-    sparse_results = bm25_search(query, top_k=20)  # [(doc_id, score), ...]
-
-    # Normalize scores
-    dense_norm = dict(zip(
-        [r[0] for r in dense_results],
-        normalize_scores([r[1] for r in dense_results])
-    ))
-    sparse_norm = dict(zip(
-        [r[0] for r in sparse_results],
-        normalize_scores([r[1] for r in sparse_results])
-    ))
-
-    # Combine
-    all_docs = set(dense_norm.keys()) | set(sparse_norm.keys())
-    combined = {}
-    for doc_id in all_docs:
-        d_score = dense_norm.get(doc_id, 0.0)
-        s_score = sparse_norm.get(doc_id, 0.0)
-        combined[doc_id] = dense_weight * d_score + sparse_weight * s_score
-
-    return sorted(combined.items(), key=lambda x: x[1], reverse=True)
-```
-
-### Approach 3: Using Qdrant Built-in Hybrid
-
-Qdrant supports hybrid search natively with sparse vectors:
-
-```python
-from qdrant_client import QdrantClient
-from qdrant_client.models import (
-    Distance, VectorParams, SparseVectorParams, SparseIndexParams
-)
-
-client = QdrantClient(":memory:")
-
-# Create collection with both dense and sparse vectors
-client.create_collection(
-    collection_name="hybrid_docs",
-    vectors_config={"dense": VectorParams(size=1536, distance=Distance.COSINE)},
-    sparse_vectors_config={
-        "bm25": SparseVectorParams(index=SparseIndexParams(on_disk=False))
-    }
-)
-
-# Search with both
-results = client.query_points(
-    collection_name="hybrid_docs",
-    prefetch=[
-        {"using": "dense", "query": dense_query_vector, "limit": 20},
-        {"using": "bm25", "query": sparse_query_vector, "limit": 20},
-    ],
-    query=fusion_query,  # RRF fusion
-    limit=10,
-)
-```
-
-:::info Tuning the dense/sparse ratio
-Start with 70% dense / 30% sparse. If your users frequently search for exact identifiers (product codes, error messages, names), increase the sparse weight. If queries are more conversational, increase the dense weight.
-:::
-
-
-
+## Notes / TODO
+- Add code snippets
+- Add links to official docs
+- Add troubleshooting checklist

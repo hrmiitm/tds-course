@@ -1,186 +1,27 @@
 ---
 title: Chunking Strategies
-description: Split documents into optimal chunks using fixed-size, recursive, and semantic strategies
-sidebar_position: 1
+description: Fixed, semantic, header-based, parent-child
 ---
 
 # Chunking Strategies
 
-Before you can embed and retrieve documents, you need to split them into chunks. The chunking strategy you choose directly impacts retrieval quality. Too small and you lose context; too large and you include irrelevant information. This guide covers the three main approaches.
+_This is placeholder content for **Week 04 — RAG & Hybrid RAG** (May 2026). Replace sections below with lecture notes, examples, and exercises._
 
-## Why Chunking Matters
+## Why this matters
+- Dummy: what you can build after learning this
+- Dummy: what breaks in real systems if you skip this
 
-LLMs have a limited context window. You cannot feed an entire 200-page document as context. Instead, you:
+## Key ideas (dummy)
+- Concept 1
+- Concept 2
+- Concept 3
 
-1. Split the document into smaller chunks
-2. Embed each chunk
-3. At query time, retrieve the most relevant chunks
-4. Feed only those chunks to the LLM
+## Hands-on (dummy)
+1. Do a 10-minute setup or experiment.
+2. Capture output / screenshots / commands.
+3. Write a short reflection in your Discourse blog.
 
-The chunk size and overlap determine how much relevant context the LLM receives.
-
-## Fixed-Size Chunking
-
-The simplest approach: split text into equal-sized pieces with optional overlap.
-
-```python
-def fixed_size_chunks(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
-    """Split text into fixed-size chunks with overlap."""
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start += chunk_size - overlap
-    return chunks
-
-text = "Lorem ipsum " * 500  # ~3500 characters
-chunks = fixed_size_chunks(text, chunk_size=500, overlap=50)
-print(f"Created {len(chunks)} chunks")
-print(f"First chunk length: {len(chunks[0])}")
-print(f"Overlap: '{chunks[0][-50:]}' == '{chunks[1][:50]}'")
-```
-
-Pros: Simple, predictable, fast
-Cons: May cut sentences or paragraphs in half
-
-:::warning Fixed-size chunking breaks semantics
-A chunk like "...the company reported revenue of $5M. Net income was" is useless because it cuts mid-sentence. The retrieved chunk lacks the information the user needs. Always prefer chunking that respects document structure.
-:::
-
-## Recursive Chunking
-
-Recursive chunking splits on progressively smaller separators, keeping paragraphs, then sentences, then words intact:
-
-```python
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-splitter = RecursiveCharacterTextSplitter(
-    separators=["\n\n", "\n", ". ", " ", ""],
-    chunk_size=500,
-    chunk_overlap=50,
-    length_function=len,
-)
-
-text = """## Introduction
-
-Data science is an interdisciplinary field that uses scientific methods to extract knowledge from data. It combines statistics, computer science, and domain expertise.
-
-## Methods
-
-Common methods include regression, classification, clustering, and dimensionality reduction. Each method has specific use cases and assumptions.
-
-### Regression
-
-Regression predicts a continuous output variable based on input features. Linear regression is the simplest form, while polynomial and ridge regression handle more complex relationships.
-
-### Classification
-
-Classification assigns inputs to discrete categories. Popular algorithms include logistic regression, decision trees, and neural networks."""
-
-chunks = splitter.split_text(text)
-for i, chunk in enumerate(chunks):
-    print(f"\n--- Chunk {i+1} ({len(chunk)} chars) ---")
-    print(chunk[:100] + "...")
-```
-
-The splitter tries double newlines first (paragraph boundaries), then single newlines, then sentence boundaries, then word boundaries. This keeps natural text groupings intact.
-
-### Using LangChain Document Loaders
-
-```python
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-# Load a PDF
-loader = PyMuPDFLoader("research_paper.pdf")
-pages = loader.load()
-
-# Split with metadata preservation
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=100,
-)
-
-chunks = splitter.split_documents(pages)
-
-for chunk in chunks[:3]:
-    print(f"Source: {chunk.metadata.get('source', 'unknown')}")
-    print(f"Page: {chunk.metadata.get('page', 'unknown')}")
-    print(f"Content preview: {chunk.page_content[:100]}...")
-```
-
-## Semantic Chunking
-
-Semantic chunking splits text based on meaning, not length. It groups sentences with similar embeddings together:
-
-```python
-from openai import OpenAI
-import numpy as np
-
-client = OpenAI()
-
-def get_embeddings(texts: list[str]) -> list[list]:
-    response = client.embeddings.create(
-        input=texts,
-        model="text-embedding-3-small"
-    )
-    return [item.embedding for item in response.data]
-
-def semantic_chunk(text: str, similarity_threshold: float = 0.7) -> list[str]:
-    """Split text into chunks based on semantic similarity between sentences."""
-    # Split into sentences
-    sentences = [s.strip() for s in text.split(". ") if s.strip()]
-    if len(sentences) <= 1:
-        return [text]
-
-    # Embed each sentence
-    embeddings = get_embeddings(sentences)
-
-    # Calculate similarity between consecutive sentences
-    chunks = []
-    current_chunk = [sentences[0]]
-
-    for i in range(1, len(sentences)):
-        sim = np.dot(embeddings[i-1], embeddings[i]) / (
-            np.linalg.norm(embeddings[i-1]) * np.linalg.norm(embeddings[i])
-        )
-
-        if sim < similarity_threshold:
-            # Low similarity — start a new chunk
-            chunks.append(". ".join(current_chunk))
-            current_chunk = [sentences[i]]
-        else:
-            # High similarity — add to current chunk
-            current_chunk.append(sentences[i])
-
-    # Add the last chunk
-    if current_chunk:
-        chunks.append(". ".join(current_chunk))
-
-    return chunks
-
-chunks = semantic_chunk("Your long document text here...", similarity_threshold=0.5)
-```
-
-:::tip When to use each strategy
-- **Fixed-size**: Quick prototyping, uniform documents (logs, transcripts)
-- **Recursive**: Most use cases — good balance of simplicity and quality
-- **Semantic**: High-stakes retrieval where boundary quality matters most (legal, medical)
-
-Start with recursive chunking. Switch to semantic only if you see retrieval issues at chunk boundaries.
-:::
-
-## Choosing Chunk Size
-
-| Chunk Size | Best For | Trade-off |
-|-----------|----------|-----------|
-| 200-400 chars | Factoid QA, precise retrieval | May lack context |
-| 500-1000 chars | General purpose, most RAG apps | Good balance |
-| 1000-2000 chars | Summarization, complex reasoning | More noise per chunk |
-
-Always set overlap to 10-20% of chunk size to avoid losing information at boundaries.
-
-
-
+## Notes / TODO
+- Add code snippets
+- Add links to official docs
+- Add troubleshooting checklist

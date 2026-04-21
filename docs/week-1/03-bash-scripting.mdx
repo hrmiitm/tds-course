@@ -1,196 +1,27 @@
 ---
 title: Bash Scripting
-description: Automate tasks with Bash — variables, loops, pipes, cron, jq, awk, and sed
-sidebar_position: 3
+description: Pipes, cron, jq, sed, awk
 ---
 
 # Bash Scripting
 
-Bash is the default shell on most Linux and macOS systems. As a data scientist, you will use Bash daily — from running Python scripts to processing log files and automating pipelines. This guide covers the essential patterns you need.
+_This is placeholder content for **Week 01 — Development Environment & Tooling** (May 2026). Replace sections below with lecture notes, examples, and exercises._
 
-## Variables and Strings
+## Why this matters
+- Dummy: what you can build after learning this
+- Dummy: what breaks in real systems if you skip this
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail  # Exit on error, undefined var, pipe failure
+## Key ideas (dummy)
+- Concept 1
+- Concept 2
+- Concept 3
 
-# Variable assignment (no spaces around =)
-PROJECT_NAME="tds-analysis"
-DATA_DIR="./data"
-TODAY=$(date +%Y-%m-%d)
+## Hands-on (dummy)
+1. Do a 10-minute setup or experiment.
+2. Capture output / screenshots / commands.
+3. Write a short reflection in your Discourse blog.
 
-# String interpolation
-echo "Running ${PROJECT_NAME} on ${TODAY}"
-echo "Data directory: ${DATA_DIR}"
-
-# Default values with parameter expansion
-OUTPUT_DIR="${OUTPUT_DIR:-./output}"
-echo "Output goes to: ${OUTPUT_DIR}"
-
-# String operations
-FILENAME="data_2024_01.csv"
-echo "${FILENAME%.csv}"        # Remove suffix → data_2024_01
-echo "${FILENAME#*_}"          # Remove prefix up to _ → 2024_01.csv
-echo "${FILENAME//_/-}"        # Replace all _ with - → data-2024-01.csv
-```
-
-:::tip Always use set -euo pipefail
-This triple flag prevents silent failures: `-e` exits on error, `-u` catches typos in variable names, and `-o pipefail` makes pipes fail if any command in the pipeline fails. Add it to every script.
-:::
-
-## Loops and Conditionals
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Process each CSV file in a directory
-for file in data/*.csv; do
-    echo "Processing: ${file}"
-
-    # Skip if file doesn't exist (glob didn't match)
-    [ -f "${file}" ] || continue
-
-    # Get file size
-    size=$(stat -f%z "${file}" 2>/dev/null || stat -c%s "${file}")
-
-    if [ "${size}" -gt 1000000 ]; then
-        echo "  Large file (${size} bytes) — sampling"
-        head -n 1000 "${file}" > "samples/$(basename "${file}")"
-    elif [ "${size}" -gt 0 ]; then
-        echo "  Small file (${size} bytes) — copying"
-        cp "${file}" "processed/"
-    else
-        echo "  Empty file — skipping"
-    fi
-done
-
-# While loop with counter
-count=0
-while IFS= read -r line; do
-    count=$((count + 1))
-    echo "Line ${count}: ${line}"
-done < input.txt
-```
-
-## Pipes and Redirection
-
-Pipes chain commands together, passing the output of one as input to the next:
-
-```bash
-# Count unique error types in a log file
-grep "ERROR" app.log | awk '{print $4}' | sort | uniq -c | sort -rn
-
-# Find the 10 largest files
-du -sh * | sort -rh | head -10
-
-# Extract URLs from a file and check HTTP status
-grep -oP 'https?://[^\s<>"]+' urls.txt | sort -u | while read -r url; do
-    status=$(curl -s -o /dev/null -w "%{http_code}" "${url}")
-    echo "${status} ${url}"
-done
-
-# Redirect stdout and stderr separately
-python train.py > train.log 2> errors.log
-
-# Redirect both to the same file
-python train.py > train.log 2>&1
-```
-
-## Cron Jobs
-
-Cron schedules commands to run automatically at specified intervals:
-
-```bash
-# View your crontab
-crontab -l
-
-# Edit your crontab
-crontab -e
-```
-
-Crontab format: `minute hour day-of-month month day-of-week command`
-
-```crontab
-# Run data sync every day at 2 AM
-0 2 * * * /home/user/scripts/sync-data.sh >> /home/user/logs/sync.log 2>&1
-
-# Run model retraining every Monday at 3 AM
-0 3 * * 1 /home/user/scripts/retrain.sh >> /home/user/logs/retrain.log 2>&1
-
-# Clean temp files every hour
-0 * * * * find /tmp -name "tds_*" -mmin +60 -delete
-```
-
-:::warning Cron environment
-Cron runs with a minimal environment — your PATH and other shell variables may not be set. Always use absolute paths in cron jobs and source your profile if needed: `source /home/user/.bashrc && /path/to/script.sh`.
-:::
-
-## jq — JSON Processing
-
-[jq](https://stedolan.github.io/jq/) is a command-line JSON processor. It is indispensable for working with APIs and configuration files:
-
-```bash
-# Pretty-print JSON
-curl -s https://api.github.com/repos/astral-sh/uv | jq '.'
-
-# Extract specific fields
-curl -s https://api.github.com/repos/astral-sh/uv | jq '{name, stars: .stargazers_count, language}'
-
-# Filter array elements
-echo '[{"name":"alice","score":85},{"name":"bob","score":92},{"name":"carol","score":78}]' \
-  | jq '.[] | select(.score > 80)'
-
-# Transform data
-echo '{"users":[{"first":"Ada","last":"Lovelace"},{"first":"Alan","last":"Turing"}]}' \
-  | jq '.users[] | {name: (.first + " " + .last)}'
-
-# Process a JSONL file (one JSON object per line)
-jq -s '[.[] | select(.status == "active")]' users.jsonl
-```
-
-## awk — Column Processing
-
-`awk` processes text line by line, splitting each line into fields:
-
-```bash
-# Print specific columns from a CSV
-awk -F',' '{print $1, $3}' data.csv
-
-# Sum a column
-awk -F',' '{sum += $2} END {print "Total:", sum}' sales.csv
-
-# Average with condition
-awk -F',' '$3 == "ACTIVE" {sum += $5; count++} END {print "Avg:", sum/count}' users.csv
-
-# Print lines where column 2 exceeds a threshold
-awk -F',' '$2 > 1000 {print $0}' metrics.csv
-```
-
-## sed — Stream Editing
-
-`sed` performs find-and-replace operations on text streams:
-
-```bash
-# Replace all occurrences in a file
-sed 's/old_name/new_name/g' config.yaml > config_new.yaml
-
-# In-place edit (modifies the file directly)
-sed -i 's/http:/https:/g' urls.txt
-
-# Delete lines matching a pattern
-sed '/^#/d' config.ini > config_clean.ini
-
-# Extract lines between two patterns
-sed -n '/START/,/END/p' log.txt
-
-# Replace only on specific line numbers
-sed '3s/v1/v2/' deployment.yaml
-```
-
-:::info Combining tools
-The real power of Bash comes from combining these tools. A typical data pipeline might use `curl` to fetch data, `jq` to parse JSON, `awk` to extract columns, `sort` and `uniq` to aggregate, and `sed` to clean up — all in a single pipeline.
-:::
-
-
-
+## Notes / TODO
+- Add code snippets
+- Add links to official docs
+- Add troubleshooting checklist

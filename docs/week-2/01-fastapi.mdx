@@ -1,202 +1,27 @@
 ---
 title: FastAPI
-description: Build high-performance APIs with FastAPI — routes, parameters, middleware, and OpenAPI documentation
-sidebar_position: 1
+description: Routing, request/response, Swagger/ReDoc
 ---
 
 # FastAPI
 
-[FastAPI](https://fastapi.tiangolo.com/) is a modern, fast web framework for building APIs with Python. It provides automatic validation, serialization, and interactive documentation out of the box. FastAPI is the framework of choice for data science APIs because it integrates seamlessly with Pydantic models and async Python.
+_This is placeholder content for **Week 02 — Deployment & API Engineering** (May 2026). Replace sections below with lecture notes, examples, and exercises._
 
-## Your First API
+## Why this matters
+- Dummy: what you can build after learning this
+- Dummy: what breaks in real systems if you skip this
 
-```python
-# main.py
-from fastapi import FastAPI
+## Key ideas (dummy)
+- Concept 1
+- Concept 2
+- Concept 3
 
-app = FastAPI(title="TDS Data API", version="1.0.0")
+## Hands-on (dummy)
+1. Do a 10-minute setup or experiment.
+2. Capture output / screenshots / commands.
+3. Write a short reflection in your Discourse blog.
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the TDS Data API"}
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-```
-
-Run it with:
-
-```bash
-uv add fastapi uvicorn
-uv run uvicorn main:app --reload
-```
-
-Visit `http://localhost:8000/docs` to see the interactive Swagger UI.
-
-## Path and Query Parameters
-
-```python
-from fastapi import FastAPI, Query
-from typing import Optional
-
-app = FastAPI()
-
-# Path parameter — part of the URL
-@app.get("/users/{user_id}")
-def get_user(user_id: int):
-    return {"user_id": user_id}
-
-# Query parameters — after the ? in the URL
-@app.get("/items/")
-def list_items(
-    skip: int = Query(0, ge=0, description="Number of items to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Max items to return"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-):
-    return {"skip": skip, "limit": limit, "category": category}
-
-# Enum for restricted values
-from enum import Enum
-
-class ModelName(str, Enum):
-    gpt4 = "gpt-4"
-    claude = "claude-3"
-    llama = "llama-3"
-
-@app.get("/models/{model_name}")
-def get_model(model_name: ModelName):
-    return {"model": model_name, "description": f"Using {model_name.value}"}
-```
-
-## Request Bodies with Pydantic
-
-```python
-from pydantic import BaseModel, Field, EmailStr
-from datetime import datetime
-from typing import Optional
-
-class PredictionRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=5000, description="Input text")
-    model: str = Field(default="gpt-4", description="Model to use")
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: int = Field(default=256, ge=1, le=4096)
-
-class PredictionResponse(BaseModel):
-    input_text: str
-    prediction: str
-    confidence: float
-    model: str
-    timestamp: datetime
-
-@app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
-    # In a real app, call your ML model here
-    result = f"Predicted output for: {request.text[:50]}..."
-    return PredictionResponse(
-        input_text=request.text,
-        prediction=result,
-        confidence=0.92,
-        model=request.model,
-        timestamp=datetime.now(),
-    )
-```
-
-:::tip Pydantic does the heavy lifting
-FastAPI uses Pydantic for validation. If a client sends invalid data (e.g., `temperature: 5.0`), FastAPI automatically returns a 422 error with a detailed message. You never need to write manual validation code.
-:::
-
-## Middleware
-
-Middleware runs before and after every request — perfect for logging, timing, and authentication:
-
-```python
-import time
-from fastapi import FastAPI, Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
-app = FastAPI()
-
-class TimingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        start = time.time()
-        response = await call_next(request)
-        duration = time.time() - start
-        response.headers["X-Process-Time"] = str(round(duration * 1000, 2)) + "ms"
-        return response
-
-app.add_middleware(TimingMiddleware)
-
-# CORS middleware (covered in detail in the CORS page)
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://your-frontend.com"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
-## Dependency Injection
-
-FastAPI's dependency injection system keeps your code clean and testable:
-
-```python
-from fastapi import Depends, FastAPI, HTTPException, Header
-
-app = FastAPI()
-
-# Simple dependency
-def common_parameters(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-):
-    return {"skip": skip, "limit": limit}
-
-@app.get("/items/")
-def list_items(params: dict = Depends(common_parameters)):
-    return params
-
-# Authentication dependency
-async def verify_api_key(x_api_key: str = Header(...)):
-    if x_api_key != "secret-key-123":
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return x_api_key
-
-@app.get("/protected/")
-def protected_route(api_key: str = Depends(verify_api_key)):
-    return {"message": "Access granted", "api_key": api_key[:8] + "..."}
-```
-
-## OpenAPI Documentation
-
-FastAPI generates interactive API documentation automatically:
-
-- **Swagger UI**: `http://localhost:8000/docs` — Try endpoints directly in the browser
-- **ReDoc**: `http://localhost:8000/redoc` — Clean, readable API reference
-- **OpenAPI JSON**: `http://localhost:8000/openapi.json` — Machine-readable spec
-
-Customize the documentation:
-
-```python
-app = FastAPI(
-    title="TDS Data API",
-    description="A sample API for the Tools in Data Science course",
-    version="1.0.0",
-    docs_url="/docs",           # Change Swagger UI path
-    redoc_url="/redoc",         # Change ReDoc path
-    openapi_url="/openapi.json" # Change OpenAPI schema path
-)
-```
-
-:::info Disable docs in production
-In production, you may want to disable documentation to avoid exposing internal API details:
-```python
-app = FastAPI(docs_url=None, redoc_url=None)
-```
-:::
-
-
-
+## Notes / TODO
+- Add code snippets
+- Add links to official docs
+- Add troubleshooting checklist

@@ -8,7 +8,7 @@ const BASE_URL = process.env.BASE_URL ?? '/';
 
 const config: Config = {
   title: 'TDS Course',
-  tagline: 'Tools in Data Science — Learn. Code. Deploy.',
+  tagline: 'Tools in Data Science — May 2026',
   favicon: 'img/logo.svg',
 
   url: SITE_URL,
@@ -124,7 +124,7 @@ const config: Config = {
         },
         {
           to: '/labs',
-          label: 'Labs',
+          label: 'Hands-on Labs',
           position: 'left',
         },
         {
