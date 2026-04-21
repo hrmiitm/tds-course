@@ -642,7 +642,12 @@ function MessageCode(props: MarkdownCodeProps): React.JSX.Element {
     downloadTextFile(filename ?? fallback, raw);
   }, [filename, language, raw]);
 
-  if (inline) {
+  const isInline =
+    inline !== undefined
+      ? inline
+      : !(className && className.includes('language-')) && !String(children).includes('\n');
+
+  if (isInline) {
     return (
       <code className={styles.inlineCode} {...rest}>
         {children}

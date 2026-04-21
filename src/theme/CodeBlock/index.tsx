@@ -72,6 +72,12 @@ export default function CodeBlock(props: Props): React.JSX.Element {
     return props.title ? String(props.title) : langId || 'code';
   }, [props.title, langId]);
 
+  // Safeguard: If this component is somehow called for inline code (single backtick),
+  // render it as a standard inline code element without the Mac-style window.
+  if (!code.includes('\n') && !langId && !props.title && !props.className?.includes('language-')) {
+    return <code className={props.className} {...props}>{props.children}</code>;
+  }
+
   const [expanded, setExpanded] = useState(() => !canCollapse);
   const [wrap, setWrap] = useState(false);
   const [lineNumbers, setLineNumbers] = useState<boolean>(() => Boolean((props as any).showLineNumbers));
