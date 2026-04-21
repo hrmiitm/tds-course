@@ -231,11 +231,6 @@ export default function Root({ children }: { children: React.ReactNode }): React
       const navbarRight = document.querySelector('.navbar__items--right');
       if (!navbarRight) return;
 
-      if (!isDesktopViewport()) {
-        navbarRight.querySelectorAll('.tds-panel-toggle-btn').forEach((btn) => btn.remove());
-        return;
-      }
-
       const anchor =
         (navbarRight.querySelector('.toc-toggle-btn') as HTMLElement | null) ||
         (navbarRight.querySelector('a[href*="github"]') as HTMLElement | null) ||

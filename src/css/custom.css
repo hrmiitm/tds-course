@@ -378,8 +378,7 @@ body {
     min-width: 0;
   }
 
-  /* Hide custom panel buttons on mobile */
-  .navbar__items--right .tds-panel-toggle-btn,
+  /* Hide desktop-only sidebar/TOC toggle buttons on mobile */
   .navbar__items--right .toc-toggle-btn,
   .navbar__items--right .sidebar-toggle-btn {
     display: none !important;
