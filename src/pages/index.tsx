@@ -21,6 +21,7 @@ type Lab = {
   difficulty: Difficulty;
   duration: string;
   href: string;
+  usedIn?: string;
 };
 
 type PhaseId = 'foundations' | 'ai-core' | 'advanced' | 'production';
@@ -292,6 +293,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-4/capstone-bs-degree-chatbot',
+    usedIn: 'BS Website (BS Office)',
   },
   {
     number: 9,
@@ -299,6 +301,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-4/capstone-policy-chatbot',
+    usedIn: 'Nirmaan (Sujal)',
   },
   {
     number: 10,
@@ -320,6 +323,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-5/capstone-vivaagent-oral-examiner',
+    usedIn: 'Professor Anand (TDS)',
   },
   {
     number: 13,
@@ -334,6 +338,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-6/capstone-job-posting-scraper-tracker',
+    usedIn: 'IIC',
   },
   {
     number: 15,
@@ -341,6 +346,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-6/capstone-ai-signature-detection-cropper',
+    usedIn: 'NPTEL',
   },
   {
     number: 16,
@@ -348,6 +354,7 @@ const LABS: Lab[] = [
     difficulty: 'Hard',
     duration: '6h',
     href: '/labs/week-6/capstone-live-multilingual-travel-translator',
+    usedIn: 'Suggested by Priyanshu (Cystar Intern)',
   },
   {
     number: 17,
@@ -715,6 +722,7 @@ function LabsSection(): React.JSX.Element {
                   <span className={`${styles.labBadge} ${badgeClass(lab.difficulty)}`}>{lab.difficulty}</span>
                   <span className={styles.labTime}>{lab.duration}</span>
                 </div>
+                {lab.usedIn && <div className={styles.labUsedIn}>Used in: {lab.usedIn}</div>}
               </div>
 
               <ArrowRight size={18} className={styles.labArrow} aria-hidden="true" />

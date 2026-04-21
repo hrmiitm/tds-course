@@ -1163,6 +1163,13 @@
   gap: 10px;
 }
 
+.labUsedIn {
+  margin-top: -4px;
+  color: var(--tds-text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .labBadge {
   padding: 3px 10px;
   border-radius: 999px;
