@@ -56,6 +56,7 @@ const STORAGE_KEY_OPACITY = 'tds_terminal_opacity';
 const STORAGE_KEY_DOCK = 'tds_terminal_dock_mode';
 const STORAGE_KEY_BACKDROP = 'tds_terminal_backdrop_blur';
 const STORAGE_KEY_RECENTS = 'tds_terminal_recent_projects_v1';
+const STORAGE_KEY_FAB_HIDDEN = 'tds_terminal_fab_hidden_v1';
 
 const MAX_RECENTS = 12;
 
@@ -167,9 +168,14 @@ function addFolderToCodeServerUrl(baseUrl: string, folder: string): string {
 function CodePanelInner() {
   /* ---- State ---- */
   const [isOpen, setIsOpen] = useState(false);
+  const [isFabHidden, setIsFabHidden] = useState(() =>
+    safeGetJSON<boolean>(STORAGE_KEY_FAB_HIDDEN, false)
+  );
   const [connectionType, setConnectionType] = useState<ConnectionType>('localhost');
   const [inputUrl, setInputUrl] = useState('');
   const [inputPort, setInputPort] = useState('8080');
+  const [openPath, setOpenPath] = useState('');
+  const [openPathHint, setOpenPathHint] = useState('');
   const [connectedUrl, setConnectedUrl] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [opacity, setOpacity] = useState(() => safeGetNumber(STORAGE_KEY_OPACITY, 1.0));
@@ -179,7 +185,7 @@ function CodePanelInner() {
     return stored;
   });
   const [dockMode, setDockMode] = useState<DockMode>(() =>
-    safeGetJSON<DockMode>(STORAGE_KEY_DOCK, 'bottom')
+    safeGetJSON<DockMode>(STORAGE_KEY_DOCK, 'right')
   );
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(() =>
     safeGetJSON<RecentProject[]>(STORAGE_KEY_RECENTS, [])
@@ -196,6 +202,10 @@ function CodePanelInner() {
   const drawerRef = useRef<HTMLDivElement>(null);
   const resizeType = useRef<string | null>(null);
   const resizeStart = useRef({ x: 0, y: 0, top: 0, left: 0, width: 0, height: 0 });
+
+  useEffect(() => {
+    safeSetJSON(STORAGE_KEY_FAB_HIDDEN, isFabHidden);
+  }, [isFabHidden]);
 
   /* ---- Computed pixel dims ---- */
   const computedDims = useCallback((): { top: number; left: number; width: number; height: number } => {
@@ -242,12 +252,29 @@ function CodePanelInner() {
     try {
       const stored = safeGetJSON<StoredConnection | null>(STORAGE_KEY_URL, null);
       if (stored && stored.url) {
-        const type: ConnectionType = stored.type === 'codespaces' ? 'custom' : (stored.type || detectConnectionType(stored.url));
-        const url = type === 'localhost' ? buildLocalhostUrl(stored.port || '8080') : stored.url;
+        const type: ConnectionType =
+          stored.type === 'codespaces' ? 'custom' : (stored.type || detectConnectionType(stored.url));
+
+        let parsed: URL | null = null;
+        try {
+          parsed = new URL(stored.url);
+        } catch {
+          parsed = null;
+        }
+
+        // Preserve full stored URL (including folder/workspace query params)
+        const url = stored.url;
 
         setConnectionType(type);
-        if (type === 'custom') setInputUrl(stored.url);
-        if (type === 'localhost' && stored.port) setInputPort(stored.port);
+        if (type === 'custom') setInputUrl(url);
+        if (type === 'localhost') {
+          const port = parsed?.port || stored.port || '8080';
+          setInputPort(port);
+        }
+
+        const folderOrWorkspace =
+          parsed?.searchParams.get('folder') || parsed?.searchParams.get('workspace') || '';
+        if (folderOrWorkspace) setOpenPath(folderOrWorkspace);
 
         // Auto-reconnect
         setConnectedUrl(url);
@@ -413,9 +440,40 @@ function CodePanelInner() {
       return;
     }
     setUrlError('');
+    setOpenPathHint('');
     const baseUrl = buildUrl(connectionType, inputUrl, inputPort);
-    connectTo(connectionType, baseUrl, connectionType === 'localhost' ? inputPort : undefined);
-  }, [connectTo, connectionType, inputPort, inputUrl, validateUrl]);
+    const folderOrWorkspace = openPath.trim();
+    connectTo(
+      connectionType,
+      baseUrl,
+      connectionType === 'localhost' ? inputPort : undefined,
+      folderOrWorkspace ? folderOrWorkspace : undefined
+    );
+  }, [connectTo, connectionType, inputPort, inputUrl, openPath, validateUrl]);
+
+  const handleBrowseOpenPath = useCallback(async () => {
+    setOpenPathHint('');
+
+    const w = window as any;
+    if (typeof w.showDirectoryPicker !== 'function') {
+      setOpenPathHint('Folder picker is not supported in this browser. Paste the server path instead.');
+      return;
+    }
+
+    try {
+      const dirHandle = await w.showDirectoryPicker();
+      const name = dirHandle?.name;
+      if (name) {
+        setOpenPath(name);
+        setOpenPathHint(
+          'Selected a local folder name. Browsers do not expose the full path—edit this to the correct path inside code-server if needed.'
+        );
+      }
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      setOpenPathHint('Could not open the folder picker. Paste the server path instead.');
+    }
+  }, []);
 
   const handleQuickConnect = useCallback(
     (type: ConnectionType, url: string, port?: string) => {
@@ -566,6 +624,21 @@ function CodePanelInner() {
         const rt = resizeType.current;
         if (!rt) return;
 
+        // Docked modes only resize one dimension.
+        // This avoids jitter and bad clamping because docked layouts derive top/left from viewport.
+        if (dockMode === 'right') {
+          const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - PANEL_MARGIN * 2);
+          const width = Math.min(maxWidth, Math.max(MIN_WIDTH, resizeStart.current.width - dx));
+          setDims((prev) => ({ ...prev, width }));
+          return;
+        }
+        if (dockMode === 'bottom') {
+          const maxHeight = Math.max(MIN_HEIGHT, window.innerHeight - PANEL_MARGIN * 2);
+          const height = Math.min(maxHeight, Math.max(MIN_HEIGHT, resizeStart.current.height - dy));
+          setDims((prev) => ({ ...prev, height }));
+          return;
+        }
+
         let newTop = resizeStart.current.top;
         let newLeft = resizeStart.current.left;
         let newWidth = resizeStart.current.width;
@@ -586,11 +659,24 @@ function CodePanelInner() {
           newWidth = Math.max(MIN_WIDTH, resizeStart.current.width + dx);
         }
 
-        // Clamp to viewport
-        if (newTop < 0) { newHeight += newTop; newTop = 0; }
-        if (newLeft < 0) { newWidth += newLeft; newLeft = 0; }
-        if (newLeft + newWidth > window.innerWidth) newWidth = window.innerWidth - newLeft;
-        if (newTop + newHeight > window.innerHeight) newHeight = window.innerHeight - newTop;
+        // Clamp to viewport (respect panel margin)
+        if (newTop < PANEL_MARGIN) {
+          newHeight -= PANEL_MARGIN - newTop;
+          newTop = PANEL_MARGIN;
+        }
+        if (newLeft < PANEL_MARGIN) {
+          newWidth -= PANEL_MARGIN - newLeft;
+          newLeft = PANEL_MARGIN;
+        }
+        if (newLeft + newWidth > window.innerWidth - PANEL_MARGIN) {
+          newWidth = window.innerWidth - PANEL_MARGIN - newLeft;
+        }
+        if (newTop + newHeight > window.innerHeight - PANEL_MARGIN) {
+          newHeight = window.innerHeight - PANEL_MARGIN - newTop;
+        }
+
+        newWidth = Math.max(MIN_WIDTH, newWidth);
+        newHeight = Math.max(MIN_HEIGHT, newHeight);
 
         setDims({ top: newTop, left: newLeft, width: newWidth, height: newHeight });
       };
@@ -615,7 +701,7 @@ function CodePanelInner() {
       document.addEventListener('touchcancel', onEnd);
       window.addEventListener('blur', onEnd);
     },
-    [computedDims]
+    [computedDims, dockMode]
   );
 
   /* ---- Status dot color ---- */
@@ -650,23 +736,26 @@ function CodePanelInner() {
   };
 
   /* ---- Render ---- */
-  const cd = isOpen ? computedDims() : { top: 0, left: 0, width: 0, height: 0 };
+  const cd = computedDims();
+  const drawerStyle: React.CSSProperties = {
+    top: cd.top,
+    left: cd.left,
+    width: cd.width,
+    height: isOpen ? cd.height : 42,
+    ['--tds-terminal-alpha' as any]: opacity,
+  };
 
   return (
     <>
       {/* Drawer */}
-      {isOpen && (
-        <div
-          ref={drawerRef}
-          className={`${styles.drawer} ${!backdropBlur ? styles.drawerNoBlur : ''} ${isResizing ? styles.drawerResizing : ''}`}
-          style={{
-            top: cd.top,
-            left: cd.left,
-            width: cd.width,
-            height: cd.height,
-            ['--tds-terminal-alpha' as any]: opacity,
-          } as React.CSSProperties}
-        >
+      <div
+        ref={drawerRef}
+        className={`${styles.drawer} ${!isOpen ? styles.drawerCollapsed : ''} ${!backdropBlur ? styles.drawerNoBlur : ''} ${isResizing ? styles.drawerResizing : ''}`}
+        style={{
+          ...drawerStyle,
+          display: isOpen ? 'flex' : 'none',
+        }}
+      >
           {/* Resize handles */}
           {(dockMode === 'floating' || dockMode === 'bottom') && (
             <div
@@ -801,18 +890,24 @@ function CodePanelInner() {
                 </button>
               )}
               <span className={styles.kbdBadge}>Ctrl+`</span>
-              <button className={styles.iconBtn} onClick={() => setIsOpen(false)} aria-label="Close panel" title="Close">
-                <X size={15} />
+              <button
+                className={styles.iconBtn}
+                onClick={() => setIsOpen((prev) => !prev)}
+                aria-label={isOpen ? 'Close panel' : 'Open panel'}
+                title={isOpen ? 'Close' : 'Open'}
+              >
+                {isOpen ? <X size={15} /> : <ChevronUp size={15} />}
               </button>
             </div>
           </div>
 
           {/* Content */}
+          <div className={`${styles.panelContent} ${!isOpen ? styles.panelContentHidden : ''}`}>
           {status === 'connected' || status === 'connecting' ? (
             <div className={styles.iframeWrapper}>
               <iframe
                 ref={iframeRef}
-                className={styles.iframe}
+                className={`${styles.iframe} ${isResizing ? styles.iframeResizing : ''}`}
                 src={connectedUrl}
                 sandbox={SANDBOX_ATTR}
                 allow="clipboard-read; clipboard-write"
@@ -892,6 +987,45 @@ function CodePanelInner() {
                       </div>
                     </>
                   )}
+
+                  <div className={styles.fieldLabel}>Open folder/workspace (optional)</div>
+                  <div className={styles.folderRow}>
+                    <input
+                      className={styles.connectInput}
+                      type="text"
+                      placeholder="e.g. /home/bitu/project or my.code-workspace"
+                      value={openPath}
+                      list="tds-codepanel-openpath-suggestions"
+                      onChange={(e) => {
+                        setOpenPath(e.target.value);
+                        setOpenPathHint('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleConnect();
+                      }}
+                      aria-label="Open folder or workspace"
+                    />
+                    <button
+                      className={styles.browseBtn}
+                      type="button"
+                      onClick={handleBrowseOpenPath}
+                      title="Browse (local folder name only)"
+                    >
+                      Browse
+                    </button>
+                    <datalist id="tds-codepanel-openpath-suggestions">
+                      {recentProjects
+                        .map((p) => p.folder)
+                        .filter(Boolean)
+                        .map((folder, idx) => (
+                          <option key={`${idx}_${folder}`} value={folder as string} />
+                        ))}
+                    </datalist>
+                  </div>
+                  <div className={styles.fieldHint}>
+                    If set, this is added to the URL as <code>?folder=…</code> or <code>?workspace=…</code>
+                  </div>
+                  {openPathHint && <div className={styles.openPathHint}>{openPathHint}</div>}
                 </div>
 
                 {urlError && <div className={styles.connectError}>{urlError}</div>}
@@ -1024,7 +1158,7 @@ function CodePanelInner() {
                     <strong>Step 2</strong> — Configure (no auth + localhost)
                     <code className={styles.guideCode}>mkdir -p ~/.config/code-server</code>
                     <code className={styles.guideCode}>nano ~/.config/code-server/config.yaml</code>
-                    <code className={styles.guideCode}>{`bind-addr: 127.0.0.1:8080
+                    <code className={styles.guideCode}>{`bind-addr: 0.0.0.0:8080
 auth: none
 cert: false`}</code>
 
@@ -1041,6 +1175,32 @@ cert: false`}</code>
               </div>
             </div>
           )}
+          </div>
+      </div>
+      {!isOpen && !isFabHidden && (
+        <div className={styles.fabWrap}>
+          <button
+            type="button"
+            className={styles.fab}
+            onClick={() => setIsOpen(true)}
+            aria-label="Open terminal"
+            title="Open terminal"
+          >
+            <Monitor size={22} />
+          </button>
+          <button
+            type="button"
+            className={styles.fabHideBtn}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsFabHidden(true);
+            }}
+            aria-label="Hide terminal launcher"
+            title="Hide"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
     </>

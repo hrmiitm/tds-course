@@ -1,0 +1,655 @@
+# 📋 TDS Course Audit & Curriculum Redesign Report
+> **Auditor:** Claude Sonnet 4.6 | **Date:** April 2026 | **Source:** tds.s-anand.net/2025-09 + cloud.google.com/free
+
+---
+
+## SECTION 1 — Existing Content Audit (TDS Sep 2025)
+
+> The course is structured as **8 modules over 12 weeks** at IIT Madras (BSSE2002), targeting diploma-level data science students.  
+> Prerequisite: Working knowledge of Python, JS, HTML, APIs, Excel, ChatGPT.
+
+### Module 1 — Development Tools
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| VS Code | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| uv (Python tools) | ✅ High | ✅ High | 4 | 4 | 5 | **KEEP** |
+| npx (JS tools) | ✅ High | ✅ High | 3 | 3 | 4 | **KEEP** |
+| Bash / Terminal | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Excel / Google Sheets | ✅ Medium | ⚠️ Declining | 2 | 3 | 2 | **REPLACE** — pivot to AI-assisted spreadsheet tools |
+| SQLite | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Browser DevTools | ✅ High | ✅ High | 2 | 3 | 3 | **KEEP** |
+| llm (CLI AI tool) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Git & GitHub | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Curl / Postman | ✅ Medium | ⚠️ Declining | 2 | 3 | 3 | **REPLACE** — shift focus to Bruno / native fetch |
+| Unicode | ✅ High | ✅ High | 2 | 2 | 3 | **KEEP** |
+| CSS Selectors | ✅ High | ✅ High | 2 | 3 | 3 | **KEEP** |
+| JSON | ✅ High | ✅ High | 2 | 3 | 4 | **KEEP** |
+| Markdown | ✅ High | ✅ High | 2 | 3 | 4 | **KEEP** |
+
+**Module Assessment:** Solid foundational module. Excel/Postman sections feel dated; the shift to uv over pip/venv is forward-thinking and should be expanded.
+
+---
+
+### Module 2 — Deployment Tools
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| GitHub Pages | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Google Colab | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| Vercel | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| HuggingFace Spaces | ✅ High | ✅ High | 4 | 5 | 4 | **KEEP** |
+| Ollama (Local LLMs) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Image Compression | ✅ Medium | ⚠️ Declining | 2 | 2 | 2 | **REMOVE** — too niche for a tools course |
+| REST APIs | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| CORS | ✅ High | ✅ High | 3 | 3 | 3 | **KEEP** |
+| ngrok (Tunneling) | ✅ Medium | ⚠️ Declining | 2 | 3 | 3 | **REPLACE** — add Cloudflare Tunnel / Tailscale |
+| Docker / Podman | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| GitHub Actions (CI/CD) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| GitHub Codespaces | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| FastAPI | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Google Auth | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Render (hosting) | ✅ High | ✅ Medium | 3 | 4 | 3 | **KEEP** — add Cloud Run alternative |
+
+**Module Assessment:** Strong deployment coverage. Image compression section is filler. MCP server deployment is missing — critical gap for 2026.
+
+---
+
+### Module 3 — AI Coding
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Vibe coding | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| AI coding online (tools) | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| AI coding in IDEs | ✅ High | ✅ High | 4 | 5 | 4 | **KEEP** |
+| AI coding in CLI | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Code context engineering | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| AI coding strategies | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Tests in AI coding | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| AI coding tools (survey) | ✅ High | ⚠️ Medium | 2 | 2 | 2 | **REPLACE** — tools change rapidly; focus on principles |
+
+**Module Assessment:** Excellent and highly relevant module. Missing: MCP integrations (Claude Code, Copilot Workspaces), prompt caching strategies for coding, and agentic loops for debugging.
+
+---
+
+### Module 4 — Large Language Models
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Prompt Engineering | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| TDS TA Instructions | ✅ Medium | ⚠️ Low | 1 | 1 | 1 | **REMOVE** — course-internal only |
+| TDS GPT Reviewer | ✅ Medium | ⚠️ Low | 1 | 1 | 1 | **REMOVE** — course-internal only |
+| LLM Sentiment Analysis | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| LLM Text Extraction | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| Base64 Encoding | ✅ Medium | ✅ Medium | 2 | 2 | 3 | **KEEP** — needed for multimodal |
+| Embeddings | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Multimodal Embeddings | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| Topic Modeling | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Vector Databases | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| RAG with CLI | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Hybrid RAG (TypeSense) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Vision Models | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| LLM Image Generation | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| LLM Speech | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| Function Calling | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| LLM Agents | ✅ High | ✅ High | 4 | 5 | 4 | **KEEP** |
+| Pydantic AI | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| LLM Evals | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+
+**Missing critical topics:** Structured output (JSON mode), MCP server creation, chunking strategies, re-ranking, RAG evaluation frameworks (RAGAS), Gemma finetuning.
+
+---
+
+### Module 5 — Data Sourcing
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Scraping with Excel | ✅ Medium | ⚠️ Declining | 2 | 2 | 1 | **REMOVE** — superseded by AI scraping |
+| Scraping with Google Sheets | ✅ Medium | ⚠️ Declining | 2 | 2 | 1 | **REMOVE** — superseded by AI scraping |
+| Crawling with CLI | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| BBC Weather API (Python) | ✅ Low | ⚠️ Low | 2 | 3 | 3 | **REPLACE** — use a more stable/modern API |
+| Nominatim API (Python) | ✅ Medium | ✅ Medium | 2 | 3 | 3 | **KEEP** |
+| Wikipedia (Python) | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Scraping IMDb (JS) | ✅ Medium | ⚠️ Medium | 2 | 3 | 3 | **REPLACE** — IMDb scraping often breaks |
+| Playwright Web Automation | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| PDFs with Tabula | ✅ Medium | ⚠️ Declining | 2 | 3 | 2 | **REPLACE** — use pdfplumber or LLM-based extraction |
+| Convert PDFs to Markdown | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| Convert HTML to Markdown | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| LLM Website Scraping | ✅ High | ✅ High | 4 | 5 | 4 | **KEEP** |
+| LLM Video Screen-Scraping | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| Scheduled Scraping (Actions) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Scraping emarketer.com | ✅ Low | ⚠️ Low | 1 | 2 | 2 | **REMOVE** — too specific |
+| Scraping Live Sessions | ✅ Medium | ⚠️ Low | 2 | 2 | 2 | **REMOVE** — course-internal only |
+| Making Open Data Useful | ✅ High | ✅ High | 3 | 3 | 3 | **KEEP** |
+
+---
+
+### Module 6 — Data Preparation
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Data Cleansing in Excel | ✅ Low | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** — pandas/polars preferred |
+| Data Transformation in Excel | ✅ Low | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** |
+| Splitting Text in Excel | ✅ Low | ⚠️ Declining | 1 | 2 | 1 | **REMOVE** |
+| Data Aggregation in Excel | ✅ Medium | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** |
+| Data Preparation in Shell | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Data Preparation in Editor | ✅ Medium | ✅ Medium | 2 | 3 | 3 | **KEEP** |
+| Data Preparation in DuckDB | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Data Transformation with dbt | ✅ High | ✅ High | 4 | 4 | 5 | **KEEP** |
+| Cleaning Data with OpenRefine | ✅ Medium | ⚠️ Declining | 2 | 3 | 2 | **REPLACE** — add AI-assisted cleaning with pandas |
+| Parsing JSON | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Transforming Images | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Extracting Audio/Transcripts | ✅ High | ✅ High | 4 | 5 | 4 | **KEEP** |
+
+---
+
+### Module 7 — Data Analysis
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Correlation with Excel | ✅ Low | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** — use Python |
+| Regression with Excel | ✅ Low | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** |
+| Forecasting with Excel | ✅ Low | ⚠️ Declining | 2 | 2 | 1 | **REPLACE** |
+| Outlier Detection with Excel | ✅ Low | ⚠️ Declining | 1 | 2 | 1 | **REMOVE** |
+| Data Analysis with Python | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Data Analysis with SQL | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Data Analysis with Datasette | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Data Analysis with DuckDB | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Vibe Analysis (AI-assisted) | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| Geospatial Analysis (Excel) | ✅ Low | ⚠️ Declining | 1 | 2 | 1 | **REMOVE** |
+| Geospatial Analysis (Python) | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+| Geospatial Analysis (QGIS) | ✅ Medium | ✅ Medium | 3 | 3 | 3 | **KEEP** |
+| Network Analysis (Python) | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+
+---
+
+### Module 8 — Data Visualization
+
+| Topic | 2026 Relevance | Long-Term Relevance | Depth (1–5) | Hands-On (1–5) | Code Quality (1–5) | Verdict |
+|-------|---------------|--------------------|----|----|----|---------|
+| Data Storytelling | ✅ High | ✅ High | 4 | 3 | 3 | **KEEP** |
+| RevealJS (HTML Slides) | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Marp (Markdown Slides) | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Marimo (Interactive Notebooks) | ✅ High | ✅ High | 4 | 5 | 5 | **KEEP** |
+| Visualizing Forecasts (Excel) | ✅ Low | ⚠️ Declining | 1 | 2 | 1 | **REMOVE** |
+| RAWgraphs | ✅ Medium | ⚠️ Declining | 2 | 3 | 2 | **REPLACE** — use Observable / Vega-Lite |
+| Data Visualization with Seaborn | ✅ High | ✅ High | 3 | 4 | 4 | **KEEP** |
+| Animated Data (PowerPoint) | ✅ Low | ⚠️ Declining | 1 | 2 | 1 | **REMOVE** |
+| Animated Data with Flourish | ✅ Medium | ⚠️ Declining | 2 | 3 | 2 | **REPLACE** — Plotly / D3 more versatile |
+| Network Visualization (Kumu) | ✅ Medium | ⚠️ Medium | 2 | 3 | 2 | **REPLACE** — PyVis / NetworkX preferred |
+| Actor Network Visualization | ✅ Medium | ✅ Medium | 3 | 3 | 3 | **KEEP** |
+| Data Visualization with ChatGPT | ✅ High | ✅ High | 3 | 4 | 3 | **KEEP** |
+| Data Storytelling with LLMs | ✅ High | ✅ High | 4 | 4 | 4 | **KEEP** |
+
+---
+
+### Overall Audit Summary
+
+| Module | Keep | Replace | Remove | Key Gap |
+|--------|------|---------|--------|---------|
+| 1. Dev Tools | 12 | 2 | 0 | MCP client setup |
+| 2. Deployment | 13 | 2 | 1 | MCP server deployment, Cloud Run |
+| 3. AI Coding | 7 | 1 | 0 | Agentic debugging, MCP tools |
+| 4. LLMs | 17 | 0 | 2 | Structured output, RAG eval, finetuning |
+| 5. Data Sourcing | 11 | 3 | 3 | AI-first scraping patterns |
+| 6. Data Prep | 7 | 4 | 1 | Polars, AI-assisted cleaning |
+| 7. Data Analysis | 8 | 3 | 2 | LLM-assisted EDA |
+| 8. Visualization | 7 | 3 | 3 | Observable, Plotly, LLM dashboards |
+
+---
+
+## SECTION 2 — GCP Free Tier Services (Currently Free, No Expiry)
+
+> Source: cloud.google.com/free — "Always Free" tier (not the $300 trial credit). Subject to change by Google.
+
+| # | GCP Service | What It Does | Free Limit (Monthly) | Useful For |
+|---|-------------|-------------|---------------------|------------|
+| 1 | **Compute Engine** | Virtual machines in Google's data centers | 1 × e2-micro instance (US regions) | Running persistent bots, APIs, servers |
+| 2 | **Cloud Storage** | Object/blob storage (files, images, models) | 5 GB-months Standard; 1 GB network egress to most regions | Storing datasets, model artifacts, static assets |
+| 3 | **BigQuery** | Serverless, petabyte-scale data warehouse | 1 TB of query processing; 10 GB storage | Querying large datasets without infrastructure |
+| 4 | **Cloud Run** | Managed platform for containerized apps | 2 million requests; 360,000 GB-seconds memory; 180,000 vCPU-seconds | Deploying FastAPI/Docker apps at zero cost |
+| 5 | **Google Kubernetes Engine (GKE)** | Managed Kubernetes cluster orchestration | 1 Autopilot or Zonal cluster (no cluster mgmt fee) | Container orchestration at scale |
+| 6 | **Cloud Build** | Managed CI/CD build service | 120 build-minutes per day | Automated testing and container builds |
+| 7 | **Cloud Logging** | Centralized log management and search | 50 GB ingested logs per month | Debugging and monitoring applications |
+| 8 | **Cloud Monitoring** | Metrics, dashboards, alerting | Included allotment for basic metrics | App performance monitoring |
+| 9 | **Firestore** | Serverless NoSQL document database | 1 GB storage; 50K reads, 20K writes, 20K deletes per day | Real-time apps, user data storage |
+| 10 | **Pub/Sub** | Global real-time messaging and streaming | 10 GB messages per month | Event-driven pipelines, async ML jobs |
+| 11 | **Cloud Run Functions** (Cloud Functions) | Serverless function execution | 2 million invocations; 400,000 GB-seconds; 200,000 GHz-seconds | Lightweight APIs, webhooks, triggers |
+| 12 | **Vision AI** | Pre-trained image analysis (OCR, labels, face) | 1,000 units per month | Document scanning, image classification |
+| 13 | **Speech-to-Text** | Audio transcription using Google's ASR | 60 minutes per month (standard model) | Transcribing short audio files |
+| 14 | **Natural Language API** | Entity extraction, sentiment, classification from text | 5,000 units per month | NLP tasks without custom models |
+| 15 | **Video Intelligence API** | Object/scene/action recognition in video | 1,000 units per month | Video content analysis |
+| 16 | **Cloud KMS Autokey** | Encryption key management and operations | 100 active key versions; 10,000 key operations per month | Secure secrets and credential management |
+| 17 | **Workflows** | Orchestrate sequences of API calls / services | 5,000 internal steps per month | Building ML pipelines and automation chains |
+| 18 | **Cloud Source Repositories** | Private Git repos hosted on GCP | Free for up to 5 users; 50 GB storage | Source control with GCP CI/CD integration |
+| 19 | **Secret Manager** | Securely store and access secrets/API keys | 6 active secret versions; 10,000 access operations | Managing credentials in production apps |
+| 20 | **Cloud Shell** | Browser-based Linux dev environment with gcloud | 5 GB persistent home disk; free compute per session | GCP management and quick prototyping |
+| 21 | **Workload Manager** | Validate workloads against best-practice rules | 5,000 resource evaluations per month | Compliance and cost governance |
+
+---
+
+## SECTION 3 — Redesigned Curriculum (8 Weeks + 2 Bonus Weeks)
+
+> **Target:** Take absolute beginners to advanced ML engineering practitioners.  
+> **Philosophy:** Every week = Reading + Hands-on Lab + Practice Exercises + End-to-End Project.
+
+---
+
+### 📅 WEEK 1 — Dev Environment & Version Control
+
+**Goal:** Set up a professional, reproducible development environment; version-control everything.
+
+**Topics:**
+- VS Code: Extensions, settings sync, keybindings, devcontainers
+- uv: Creating/managing Python projects, lockfiles, scripts vs packages
+- Bash scripting: Variables, loops, pipes, cron jobs, `jq`, `awk`, `sed`
+- Git & GitHub: Branching strategies, PRs, merge conflicts, `.gitignore`, `git bisect`
+- SQLite: Schema design, queries, indexes, `sqlite-utils`, using SQLite as an app database
+- GitHub Pages: Deploying static sites with custom domains and GitHub Actions
+
+**Reading Material:**
+- uv official docs — Projects section
+- The Missing Semester of Your CS Education (Shell, Git chapters)
+- SQLite Tutorial (sqlitetutorial.net)
+
+**Hands-on Lab:**
+- **Mini-Lab 1a:** Write a Bash script that pulls JSON from a public API, processes it with `jq`, and stores results in SQLite
+- **Mini-Lab 1b:** Publish a personal portfolio site to GitHub Pages using a GitHub Action on push
+
+**Practice Exercises:**
+1. Migrate a requirements.txt project to uv with lockfile
+2. Write a Bash script to auto-backup a SQLite DB to GitHub
+3. Set up a GitHub Pages site with automated HTML generation from SQLite
+
+**End-to-End Project:**
+> Build a **Git-tracked personal data dashboard**: Bash script fetches public API data nightly (via cron/GitHub Action), stores in SQLite, generates an HTML report, and auto-deploys to GitHub Pages.
+
+**New Topics to Add:**
+- Bruno (API client replacing Postman — open source, git-friendly)
+- `sqlite-utils` Python library for CLI-first database work
+- GitHub CLI (`gh`) for PR and issue automation
+
+---
+
+### 📅 WEEK 2 — Containers, APIs & Deployment
+
+**Goal:** Containerize and deploy applications to the web; understand API design.
+
+**Topics:**
+- FastAPI: Routes, path/query params, request bodies, middleware, background tasks, OpenAPI
+- Docker: Dockerfile best practices, multi-stage builds, volumes, networking, `docker compose`
+- Vercel: Deploying Python + Node serverless functions
+- Render: Free-tier web service deployments, environment variables, persistent disks
+- HuggingFace Spaces: Gradio + FastAPI spaces, Space secrets, GPU Spaces
+- CORS, REST APIs, HTTP status codes
+- Google Auth: OAuth2 flow, access tokens, service accounts
+
+**Reading Material:**
+- FastAPI official docs (Tutorial section)
+- Docker Getting Started guide
+- HuggingFace Spaces documentation
+
+**Hands-on Lab:**
+- **Lab 1: ChatBot with FastAPI** — Build a streaming chat API with FastAPI, Dockerize it, deploy to Render, add Google Auth for protected endpoints, embed a simple frontend on HuggingFace Spaces
+
+**Practice Exercises:**
+1. Add rate limiting and API key auth to a FastAPI app
+2. Build a multi-container app (FastAPI + PostgreSQL) with docker compose
+3. Deploy the same app to both Render and HuggingFace Spaces; document differences
+
+**End-to-End Project:**
+> **Public ChatBot Service**: Dockerized FastAPI backend with Google Auth login, rate limiting, chat history stored in SQLite, deployed on Render with the frontend on HuggingFace Spaces.
+
+**New Topics to Add:**
+- Pydantic v2 for input validation (deeply integrated with FastAPI)
+- Health check endpoints and readiness probes
+- Cloudflare Tunnel as free ngrok alternative
+
+---
+
+### 📅 WEEK 3 — Prompt Engineering & LLM Fundamentals
+
+**Goal:** Master the art and science of communicating with LLMs; build reliable LLM pipelines.
+
+**Topics:**
+- Prompt engineering: Zero-shot, few-shot, chain-of-thought, role prompting, delimiters
+- Structured output: JSON mode, Pydantic + LLM, `instructor` library
+- LLM text extraction: Named entities, tables from PDFs, receipts, invoices
+- LLM sentiment & classification pipelines
+- Function calling: Tool use, parallel tools, tool choice strategies
+- `llm` CLI tool: Plugins, templates, conversation history, cost tracking
+- Embeddings: What they are, cosine similarity, embedding models (text-embedding-3-small, Nomic)
+- Base64 encoding for multimodal inputs
+
+**Reading Material:**
+- OpenAI Prompt Engineering Guide
+- Anthropic's Prompt Engineering docs
+- `instructor` library docs
+
+**Hands-on Lab:**
+- **Mini-Lab 3a:** Build a structured invoice extractor — upload PDF, extract line items as JSON using function calling + Pydantic
+- **Mini-Lab 3b:** Build a CLI tool using `llm` with a custom prompt template and local model support via Ollama
+
+**Practice Exercises:**
+1. Compare zero-shot vs few-shot vs CoT on 10 tricky classification examples
+2. Build an LLM evaluation harness: generate 20 test cases, run 3 models, compare outputs
+3. Implement structured output with fallback retry logic using `instructor`
+
+**End-to-End Project:**
+> **Document Intelligence API**: FastAPI service that accepts any uploaded document (PDF/image), extracts structured data (entities, tables, summaries) using function calling, returns clean JSON.
+
+**New Topics to Add:**
+- Prompt caching (Anthropic/OpenAI) for cost reduction
+- LLM cost tracking and token budgeting
+- `outlines` library for guaranteed structured generation
+- Streaming responses with Server-Sent Events
+
+---
+
+### 📅 WEEK 4 — RAG, Vector DBs & Hybrid Search
+
+**Goal:** Build production-grade Retrieval Augmented Generation systems.
+
+**Topics:**
+- Chunking strategies: Fixed-size, recursive, semantic, document-aware, late chunking
+- Vector databases: FAISS (in-memory), Chroma (persistent), PGVector (Postgres), Qdrant
+- Hybrid search: Dense (vectors) + sparse (BM25/TF-IDF) combination
+- Re-ranking: Cross-encoders, Cohere Rerank, ColBERT
+- RAG evaluation: RAGAS framework — faithfulness, answer relevance, context precision/recall
+- Multimodal embeddings: CLIP, image+text retrieval
+- Topic modeling: BERTopic for corpus exploration
+
+**Reading Material:**
+- RAGAS documentation
+- Chroma docs
+- "Advanced RAG" blog series (Towards Data Science)
+
+**Hands-on Lab:**
+- **Lab 2: RAG ChatBot** — Build a full RAG pipeline: upload PDFs → chunk → embed into Chroma → retrieve with hybrid search (BM25 + vector) → re-rank → generate answer → evaluate with RAGAS
+- **Lab 4: Hybrid RAG ChatBot** — Extend Lab 2 with PGVector (Postgres), add metadata filtering, multi-query retrieval, and a Streamlit/Gradio UI
+
+**Practice Exercises:**
+1. Compare 5 chunking strategies on the same document; measure retrieval quality
+2. Benchmark FAISS vs Chroma vs PGVector on 10K document corpus
+3. Implement RAGAS evaluation pipeline on your RAG system; iterate to improve scores
+
+**End-to-End Project:**
+> **Company Knowledge Base ChatBot**: Ingest a corpus of documents (PDFs, HTML pages, Notion exports), build a hybrid RAG system with PGVector, add conversation memory, evaluate with RAGAS, deploy as FastAPI + HuggingFace Space.
+
+**New Topics to Add:**
+- GraphRAG (Microsoft) — knowledge graph-enhanced retrieval
+- Late chunking with JINA embeddings
+- Contextual retrieval (Anthropic) — prepend chunk context before embedding
+- Query rewriting and HyDE (Hypothetical Document Embeddings)
+
+---
+
+### 📅 WEEK 5 — Agentic AI & MCP
+
+**Goal:** Build autonomous AI agents that use tools, call APIs, and run multi-step reasoning loops.
+
+**Topics:**
+- LLM Agents: ReAct loop, plan-and-execute, reflexion
+- Pydantic AI: Defining agents, tool registration, structured agent output, dependency injection
+- Function calling deep dive: Parallel tool calls, nested tools, tool error handling
+- MCP (Model Context Protocol): Architecture, client/server model
+- Setting up MCP server in VS Code (Claude Desktop + Claude Code)
+- Building a custom MCP server in Python (FastMCP library)
+- Multimodal agents: Vision + tool use (analyzing images, running code, web browsing)
+
+**Reading Material:**
+- Anthropic MCP specification (modelcontextprotocol.io)
+- Pydantic AI documentation
+- "Building LLM Agents" — LangGraph conceptual docs
+
+**Hands-on Lab:**
+- **Lab 6: AI Agent + MCP** — Build an autonomous research agent: given a question, it searches the web (Tavily/SerpAPI tool), reads URLs, stores findings in SQLite, and synthesizes a report — all via MCP server running in VS Code
+
+**Practice Exercises:**
+1. Build a file-system MCP server that an LLM can use to read/write local files
+2. Implement a ReAct agent from scratch (no framework) using function calling
+3. Build an agent that can debug its own errors by re-running and analyzing tracebacks
+
+**End-to-End Project:**
+> **Personal Research Assistant Agent**: An MCP server exposing tools (web search, URL reader, SQLite storage, PDF parser), deployed and accessible via Claude Desktop / VS Code. Saves research sessions with citations, exports to Markdown.
+
+**New Topics to Add:**
+- LangGraph for stateful multi-agent workflows
+- Agent memory: short-term (context), long-term (vector store), episodic (logs)
+- Agent evaluation: trajectory correctness, tool use efficiency
+- OpenAI Swarm / CrewAI patterns for multi-agent coordination
+
+---
+
+### 📅 WEEK 6 — Media Processing & Computer Vision with LLMs
+
+**Goal:** Process real-world media (images, video, audio) using modern vision-language models.
+
+**Topics:**
+- Vision models: GPT-4o Vision, Gemini Flash/Pro, LLaVA, Moondream
+- Image processing pipeline: Preprocessing, annotation, bounding boxes, crop/mask
+- Grounding DINO: Open-vocabulary object detection, zero-shot grounding
+- Video understanding: Frame extraction, video LLMs, temporal reasoning
+- Audio processing: Whisper transcription, speaker diarization, audio segmentation
+- Image generation: SDXL, FLUX, ControlNet — programmatic generation with APIs
+- LLM Speech: TTS (OpenAI, ElevenLabs), STT pipelines
+
+**Reading Material:**
+- Grounding DINO paper (arXiv:2303.05499)
+- Whisper documentation (OpenAI)
+- Hugging Face Diffusers docs
+
+**Hands-on Lab:**
+- **Lab 5: Signature Detection & Cropper using Grounding DINO Tiny** — Given a batch of scanned documents, use Grounding DINO Tiny to detect and crop signature regions, output cropped PNGs + bounding box JSON, evaluate detection quality
+
+**Practice Exercises:**
+1. Build a video chapter generator: extract frames every 5s, describe each with a VLM, cluster into chapters
+2. Build a receipt OCR pipeline: image → GPT-4o Vision → structured JSON → SQLite
+3. Build a podcast transcription + speaker attribution pipeline with Whisper + pyannote
+
+**End-to-End Project:**
+> **Document Digitization Service**: API accepting scanned document images → detect regions (text, tables, signatures, stamps) with Grounding DINO → OCR with Vision LLM → return structured JSON + annotated PDF → deploy on Cloud Run.
+
+**New Topics to Add:**
+- SAM2 (Segment Anything Model 2) for precise segmentation
+- Moondream for edge/lightweight vision inference
+- ColPali — multimodal RAG directly on document images
+- LayoutLM for document understanding
+
+---
+
+### 📅 WEEK 7 — Model Finetuning, Custom Packages & Publishing
+
+**Goal:** Finetune open-source LLMs, publish models to HuggingFace, and ship reusable Python tools.
+
+**Topics:**
+- Finetuning strategy: When to finetune vs RAG vs prompt engineering
+- Gemma4 finetuning: QLoRA with Unsloth, dataset preparation, training on Colab free GPU
+- HuggingFace ecosystem: Datasets, Transformers, PEFT, TRL, pushing to Hub
+- Evaluating finetuned models: Eleuther LM Eval Harness, custom eval sets
+- Publishing to HuggingFace Hub: Model cards, datasets, Spaces demo
+- Creating a pip-installable Python library: `pyproject.toml`, src layout, `__init__.py`, versioning
+- Publishing to PyPI with uv: `uv build`, `uv publish`, GitHub Actions release workflow
+- Creating a uv tool: Entry points, CLI scripts, global tool installation
+
+**Reading Material:**
+- Unsloth documentation + notebooks
+- HuggingFace PEFT docs
+- PyPA packaging guide
+
+**Hands-on Lab:**
+- **Lab 3: Gemma4 Finetuning** — Finetune Gemma4 on a custom instruction dataset (your chosen domain), push adapter to HuggingFace Hub, create a Spaces demo, run LM Eval Harness evaluation
+
+**Practice Exercises:**
+1. Prepare a 500-sample instruction dataset from raw text using an LLM
+2. Compare base Gemma4 vs finetuned on 20 domain-specific questions; compute ROUGE scores
+3. Package your RAG pipeline from Week 4 as a pip library and publish to PyPI
+
+**End-to-End Project:**
+> **Domain Expert LLM + Tool**: Finetune Gemma4 on a domain of your choice (legal, medical, coding, etc.), publish to HuggingFace Hub, wrap it in a Python library (`pip install your-expert-llm`), create a uv tool (`uvx your-expert-llm chat`), and deploy a HuggingFace Spaces demo.
+
+**New Topics to Add:**
+- DPO (Direct Preference Optimization) as alternative to RLHF
+- Merging models with `mergekit`
+- GGUF quantization with `llama.cpp` for local deployment
+- Model versioning and lineage tracking
+
+---
+
+### 📅 WEEK 8 — CI/CD, Advanced Docker & Security
+
+**Goal:** Build bulletproof, automated deployment pipelines; apply production security practices.
+
+**Topics:**
+- GitHub Actions: Matrix builds, reusable workflows, secrets management, environments
+- Advanced Docker: Multi-stage builds, BuildKit cache mounts, distroless images, health checks, Compose v2 profiles
+- OpenClaw: LLM security testing — prompt injection, jailbreaks, data exfiltration probes
+- NemoClaw (NVIDIA NeMo Guardrails): Input/output rails, topic filters, hallucination detection
+- Google Auth: Service accounts, Workload Identity, JWT verification, OAuth2 scopes
+- Security best practices: OWASP LLM Top 10, input sanitization, rate limiting, audit logs
+
+**Reading Material:**
+- GitHub Actions documentation (reusable workflows)
+- OWASP LLM Top 10 (2025)
+- NVIDIA NeMo Guardrails docs
+
+**Hands-on Lab:**
+- **Lab 7: CI/CD Pipeline** — For your Week 2 ChatBot: add a full GitHub Actions pipeline (lint → test → build Docker → push to GHCR → deploy to Cloud Run) with branch protection rules, secret scanning, and NeMo Guardrails integration
+
+**Practice Exercises:**
+1. Write a GitHub Actions matrix job testing your FastAPI app on Python 3.11, 3.12, 3.13
+2. Run OpenClaw against your Week 2 ChatBot; document 3 vulnerabilities and patch them
+3. Implement NeMo Guardrails on a chatbot: block off-topic queries and detect prompt injection
+
+**End-to-End Project:**
+> **Production-Grade Secured ChatBot**: Full CI/CD from push to Cloud Run. Includes: GitHub Actions pipeline, Docker multi-stage build, NeMo Guardrails for safety, Google Auth for user management, OpenClaw security audit, monitoring with Cloud Logging.
+
+**New Topics to Add:**
+- Dependabot for automated dependency updates
+- SBOM (Software Bill of Materials) generation in Docker builds
+- LLM API key rotation strategies
+- Cost alerting and budget caps in Cloud Run
+
+---
+
+### 🎓 BONUS WEEK 9 — MLOps on GCP (Part 1: Train & Evaluate)
+
+**Goal:** Use GCP's free tier to set up a real ML training, evaluation, and experiment tracking pipeline.
+
+**Topics:**
+- MLflow: Experiment tracking, model registry, artifact storage, UI
+- Vertex AI Workbench: Managed notebooks on GCP
+- GCP ML Pipeline basics: Kubeflow Pipelines on Vertex AI
+- Cloud Storage for ML artifacts: Model checkpoints, datasets, evaluation results
+- BigQuery ML: Training models directly in SQL
+- Cloud Monitoring for ML: Custom metrics, model drift detection
+- Data versioning with DVC (Data Version Control) + GCS backend
+
+**Reading Material:**
+- MLflow quickstart docs
+- Vertex AI Pipelines documentation
+- DVC documentation
+
+**Hands-on Lab:**
+- **Lab 8 (Part 1): MLOps on GCP — Train & Evaluate** — Track Gemma4 finetuning experiments in MLflow, store artifacts in Cloud Storage, run automated evaluation on Vertex AI, log metrics to BigQuery, build a monitoring dashboard in Cloud Monitoring
+
+**Practice Exercises:**
+1. Log 5 experiments with different hyperparameters in MLflow; compare in the UI
+2. Build a Vertex AI Pipeline with 3 steps: data validation → training → evaluation
+3. Set up DVC with GCS remote; version a 1GB dataset with reproducible data pipeline
+
+**End-to-End Project:**
+> **Reproducible ML Experiment System**: End-to-end pipeline from raw data → DVC-versioned dataset → MLflow-tracked training → Vertex AI evaluation → model registered in MLflow → dashboard in BigQuery + Cloud Monitoring.
+
+**New Topics to Add:**
+- Weights & Biases as MLflow alternative (richer viz)
+- Great Expectations for data quality validation
+- Model cards generation (automated with Hugging Face)
+- A/B testing framework for model comparisons
+
+---
+
+### 🎓 BONUS WEEK 10 — MLOps on GCP (Part 2: Deploy & Monitor)
+
+**Goal:** Deploy ML models to production on GCP with full monitoring, alerting, and automated retraining.
+
+**Topics:**
+- Cloud Run for ML: Deploying FastAPI model servers, GPU-enabled Cloud Run
+- GCP ML Pipeline: Full train → evaluate → register → deploy → monitor loop
+- Vertex AI Model Monitoring: Drift detection, feature attribution, alert policies
+- Pub/Sub + Cloud Run Functions: Event-driven model retraining triggers
+- Cloud Scheduler: Automated batch inference jobs
+- Artifact Registry: Private Docker image registry for ML containers
+- BigQuery for predictions: Logging all model inputs/outputs for audit + retraining
+- Cost optimization: Committed use discounts, spot instances for training
+
+**Reading Material:**
+- Vertex AI Model Monitoring docs
+- Cloud Run GPU docs (preview)
+- Google Cloud Architecture: ML on GCP reference architecture
+
+**Hands-on Lab:**
+- **Lab 8 (Part 2): MLOps on GCP — Deploy & Monitor** — Deploy your finetuned Gemma4 to Cloud Run, set up Vertex AI monitoring for input drift, log all predictions to BigQuery, trigger automated retraining via Pub/Sub when drift threshold exceeded, visualize in Looker Studio
+
+**Practice Exercises:**
+1. Deploy 2 model versions behind a Cloud Run traffic-splitting setup (90/10 A/B test)
+2. Simulate data drift on your prediction endpoint; verify alerts fire in Cloud Monitoring
+3. Build a cost dashboard in BigQuery + Looker Studio for your entire GCP ML stack
+
+**End-to-End Capstone Project:**
+> **Full Production ML System on GCP**: From dataset (DVC + GCS) → training pipeline (Vertex AI + MLflow) → model registry → Cloud Run deployment with auth → real-time monitoring (Vertex AI + BigQuery) → automated retraining trigger (Pub/Sub) → CI/CD (GitHub Actions + Artifact Registry). Costs $0 using free tier + $300 credits.
+
+**Additional GCP Services to Leverage (Free Tier):**
+- Firestore for real-time prediction caching
+- Secret Manager for API key management
+- Cloud Build for ML container builds (120 min/day free)
+- Cloud Shell for GCP management without local setup
+
+---
+
+## SECTION 4 — Hands-on Labs Master List
+
+| Lab | Title | Week | Key Tools | Difficulty |
+|-----|-------|------|-----------|------------|
+| Lab 1 | ChatBot with FastAPI | Week 2 | FastAPI, Docker, Render, Google Auth, HuggingFace Spaces | ⭐⭐ |
+| Lab 2 | RAG ChatBot | Week 4 | Chroma, FAISS, LLM, FastAPI, RAGAS | ⭐⭐⭐ |
+| Lab 3 | Gemma4 Finetuning | Week 7 | Unsloth, PEFT, HuggingFace Hub, Colab | ⭐⭐⭐⭐ |
+| Lab 4 | Hybrid RAG ChatBot | Week 4 | PGVector, BM25, Re-rankers, Streamlit | ⭐⭐⭐ |
+| Lab 5 | Signature Detection & Cropper (Grounding DINO) | Week 6 | Grounding DINO Tiny, OpenCV, FastAPI | ⭐⭐⭐ |
+| Lab 6 | AI Agent + MCP | Week 5 | Pydantic AI, MCP, VS Code, Tavily | ⭐⭐⭐⭐ |
+| Lab 7 | CI/CD Pipeline | Week 8 | GitHub Actions, Docker, Cloud Run, NemoClaw | ⭐⭐⭐ |
+| Lab 8 | Full MLOps on GCP | Bonus 9+10 | MLflow, Vertex AI, Cloud Run, BigQuery, Pub/Sub | ⭐⭐⭐⭐⭐ |
+| Lab 9 *(new)* | Document Digitization Pipeline | Week 6 | Grounding DINO, GPT-4o Vision, FastAPI, Cloud Run | ⭐⭐⭐ |
+| Lab 10 *(new)* | Research Agent with MCP | Week 5 | FastMCP, LangGraph, Tavily, SQLite | ⭐⭐⭐⭐ |
+| Lab 11 *(new)* | Custom LLM Library on PyPI | Week 7 | uv, pyproject.toml, GitHub Actions, PyPI | ⭐⭐ |
+| Lab 12 *(new)* | LLM Security Audit | Week 8 | OpenClaw, NemoClaw, Guardrails AI | ⭐⭐⭐ |
+
+---
+
+## SECTION 5 — Proposed New Topics (Not in Current Curriculum)
+
+| Topic | Suggested Week | Why It Matters in 2026 |
+|-------|---------------|------------------------|
+| **MCP Server Development** (FastMCP) | Week 5 | MCP is the emerging standard for LLM tool integration |
+| **Structured Output with `instructor`** | Week 3 | 10× more reliable than raw JSON prompting |
+| **Contextual Retrieval** (Anthropic) | Week 4 | Reduces retrieval failures by 49% in benchmarks |
+| **GraphRAG** (Microsoft) | Week 4 | Outperforms naive RAG on reasoning-heavy queries |
+| **Grounding DINO Tiny** | Week 6 | Lightweight open-vocabulary detection, industry-relevant |
+| **ColPali** (Multimodal RAG) | Week 6 | Retrieval directly on PDF page images, no OCR needed |
+| **NeMo Guardrails** | Week 8 | Safety rails for production LLM apps |
+| **OpenClaw / LLM Red-teaming** | Week 8 | Critical skill as LLMs enter regulated domains |
+| **DPO Finetuning** | Week 7 | More stable than RLHF; industry standard in 2026 |
+| **MLflow Experiment Tracking** | Bonus 9 | Industry standard for reproducible ML |
+| **Vertex AI Pipelines** | Bonus 9 | GCP-native ML orchestration |
+| **BigQuery ML** | Bonus 10 | SQL-native ML — zero infra overhead |
+| **LangGraph** | Week 5 | Best framework for stateful multi-agent systems |
+| **RAGAS Evaluation** | Week 4 | Automated, LLM-powered RAG quality measurement |
+| **Polars** | Week 6 (Data Prep) | 10–100× faster than pandas; modern default |
+| **DuckDB + Parquet** | Week 6 | Analytics-grade local data warehouse |
+| **uv tools / uvx** | Week 7 | Publish and run CLI tools without pip install |
+| **Prompt Caching** | Week 3 | Cut costs 80–90% on repeated context |
+
+---
+
+*Report generated by Claude Sonnet 4.6 | April 2026*  
+*Sources: tds.s-anand.net/2025-09 | cloud.google.com/free*

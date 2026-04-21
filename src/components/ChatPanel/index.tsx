@@ -38,6 +38,7 @@ interface ChatSession {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
+  sentPagePaths: string[];
 }
 
 interface ChatProvider {
@@ -62,14 +63,6 @@ interface Dimensions {
   left: number;
 }
 
-interface CourseDoc {
-  id: string;
-  title: string;
-  url: string;
-  keywords: string[];
-  content: string;
-}
-
 type ResizeDirection =
   | 'top'
   | 'bottom'
@@ -80,22 +73,11 @@ type ResizeDirection =
   | 'bottom-left'
   | 'bottom-right';
 
-type OpenRouterRole = 'system' | 'user' | 'assistant' | 'tool';
-
-interface OpenRouterToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
+type OpenRouterRole = 'system' | 'user' | 'assistant';
 
 interface OpenRouterMessage {
   role: OpenRouterRole;
   content?: string | null;
-  tool_call_id?: string;
-  tool_calls?: OpenRouterToolCall[];
 }
 
 interface OpenRouterResponse {
@@ -118,175 +100,28 @@ const CHAT_STATE_KEY = 'tds_chat_state_v2';
 const CHAT_DIMENSIONS_KEY = 'tds_chat_dimensions';
 const CHAT_OPACITY_KEY = 'tds_chat_opacity';
 const MAX_HISTORY = 180;
+const MAX_SENT_PAGES = 50;
 const MIN_WIDTH = 340;
 const MIN_HEIGHT = 300;
 
 const SUGGESTIONS = [
   { label: 'What does Week 5 cover?', icon: '📚' },
   { label: 'How to setup code-server quickly?', icon: '🛠️' },
-  { label: 'Explain RAG in this course context', icon: '🔍' },
+  { label: 'Summarize this page in 5 bullets', icon: '🔍' },
   { label: 'Show me all labs by difficulty', icon: '🧪' },
 ];
 
-const COURSE_DOCS: CourseDoc[] = [
-  {
-    id: 'overview',
-    title: 'Course Overview',
-    url: '/intro',
-    keywords: ['overview', 'course', 'tools in data science', 'curriculum'],
-    content:
-      'Tools in Data Science covers modern development, LLMs, RAG, agentic AI, deployment and MLOps through week-by-week modules and hands-on labs.',
-  },
-  {
-    id: 'week-1',
-    title: 'Week 1 — Dev Environment',
-    url: '/week-1',
-    keywords: ['week 1', 'vscode', 'git', 'bash', 'sqlite', 'uv'],
-    content:
-      'Week 1 covers VS Code setup, uv Python workflows, Bash scripting, Git/GitHub, SQLite, and GitHub Pages basics.',
-  },
-  {
-    id: 'week-2',
-    title: 'Week 2 — Deploy & APIs',
-    url: '/week-2',
-    keywords: ['week 2', 'fastapi', 'docker', 'apis', 'deployment', 'cors'],
-    content:
-      'Week 2 focuses on FastAPI, Docker, deployment platforms, REST/CORS concepts, and practical API shipping.',
-  },
-  {
-    id: 'week-3',
-    title: 'Week 3 — LLM Fundamentals',
-    url: '/week-3',
-    keywords: ['week 3', 'llm', 'prompt', 'embeddings', 'function calling'],
-    content:
-      'Week 3 includes prompt engineering, structured outputs, extraction tasks, function calling, and embeddings.',
-  },
-  {
-    id: 'week-4',
-    title: 'Week 4 — RAG',
-    url: '/week-4',
-    keywords: ['week 4', 'rag', 'chunking', 'vector database', 'reranking'],
-    content:
-      'Week 4 covers retrieval pipelines, chunking strategies, vector databases, hybrid search, reranking and evaluation.',
-  },
-  {
-    id: 'week-5',
-    title: 'Week 5 — Agents and MCP',
-    url: '/week-5',
-    keywords: ['week 5', 'agent', 'mcp', 'pydantic ai', 'langgraph'],
-    content:
-      'Week 5 teaches agent loops, MCP protocol/server concepts, Pydantic AI and orchestration patterns.',
-  },
-  {
-    id: 'week-6',
-    title: 'Week 6 — Vision and Media',
-    url: '/week-6',
-    keywords: ['week 6', 'vision', 'image', 'audio', 'grounding dino'],
-    content:
-      'Week 6 focuses on vision models, image and audio workflows, and multimodal processing pipelines.',
-  },
-  {
-    id: 'week-7',
-    title: 'Week 7 — Finetuning and Packaging',
-    url: '/week-7',
-    keywords: ['week 7', 'finetuning', 'gemma', 'huggingface', 'pypi'],
-    content:
-      'Week 7 covers finetuning strategy, Gemma tuning workflows, HuggingFace ecosystem, and packaging/publishing.',
-  },
-  {
-    id: 'week-8',
-    title: 'Week 8 — CI/CD and Security',
-    url: '/week-8',
-    keywords: ['week 8', 'github actions', 'security', 'guardrails', 'docker'],
-    content:
-      'Week 8 teaches CI/CD pipelines, advanced Docker patterns, security hardening, and guardrail patterns.',
-  },
-  {
-    id: 'week-9-10',
-    title: 'Weeks 9-10 — MLOps',
-    url: '/week-9',
-    keywords: ['week 9', 'week 10', 'mlops', 'vertex', 'cloud run', 'monitoring'],
-    content:
-      'Weeks 9 and 10 focus on MLOps workflows including experimentation, deployment, monitoring and cost controls.',
-  },
-  {
-    id: 'labs',
-    title: 'Hands-on Labs',
-    url: '/labs',
-    keywords: ['labs', 'assignments', 'projects', 'hands-on'],
-    content:
-      'The platform includes 17 hands-on labs ranging from chatbot builds and RAG to MLOps and system design.',
-  },
-  {
-    id: 'terminal',
-    title: 'Built-in Terminal Setup',
-    url: '/intro',
-    keywords: ['terminal', 'code-server', 'localhost', 'setup'],
-    content:
-      'Install with curl script, configure ~/.config/code-server/config.yaml for localhost + no-auth, then start code-server and connect from Terminal panel.',
-  },
-];
+const SYSTEM_PROMPT = `You are the TDS Course Assistant embedded in a static website.
 
-const TOOL_DEFINITIONS: Array<{
-  type: 'function';
-  function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
-}> = [
-  {
-    type: 'function',
-    function: {
-      name: 'search_course_content',
-      description: 'Search course topics, weeks, labs and setup instructions.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' },
-          limit: { type: 'number' },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_course_overview',
-      description: 'Return structured overview of the course and key sections.',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_current_page_context',
-      description: 'Return current route and visible headings/content context from the open page.',
-      parameters: {
-        type: 'object',
-        properties: {},
-      },
-    },
-  },
-];
+You will receive, on every user message:
+- The current page content (as markdown-like text)
+- The docs sidebar navigation outline
 
-const SYSTEM_PROMPT = `You are the TDS Course Assistant running in a static website.
-- Answer clearly, accurately, and with practical steps.
-- Prefer concise but complete responses.
-- For course-specific or page-specific questions, call tools first when useful:
-  1) search_course_content
-  2) get_course_overview
-  3) get_current_page_context
-- If the user asks for code, return executable code blocks.
-- If you generate files, include fenced code blocks and filename metadata like:
-  \`\`\`python filename=app.py
-  ...
-  \`\`\`
-- Never invent unavailable course details.`;
+Rules:
+- Use the provided context + conversation history. If something is not present, say so.
+- Answer with practical, step-by-step help.
+- When the user asks for code, return executable code blocks.
+- Be concise but complete.`;
 
 /* ===== Helpers ===== */
 function now(): number {
@@ -365,6 +200,7 @@ function createSession(title = 'New Session'): ChatSession {
     id: makeId('session'),
     title,
     messages: [],
+    sentPagePaths: [],
     createdAt: t,
     updatedAt: t,
   };
@@ -411,9 +247,16 @@ function normalizeSession(raw: unknown): ChatSession | null {
   const title = typeof raw.title === 'string' && raw.title.trim() ? raw.title : 'Session';
   const messagesRaw = Array.isArray(raw.messages) ? raw.messages : [];
   const messages = messagesRaw.map(normalizeMessage).filter((m): m is Message => Boolean(m)).slice(-MAX_HISTORY);
+  const sentPagePaths = Array.isArray(raw.sentPagePaths)
+    ? raw.sentPagePaths
+        .filter((p): p is string => typeof p === 'string')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .slice(-MAX_SENT_PAGES)
+    : [];
   const createdAt = typeof raw.createdAt === 'number' ? raw.createdAt : now();
   const updatedAt = typeof raw.updatedAt === 'number' ? raw.updatedAt : now();
-  return { id, title, messages, createdAt, updatedAt };
+  return { id, title, messages, sentPagePaths, createdAt, updatedAt };
 }
 
 function loadChatState(): ChatState {
@@ -454,124 +297,146 @@ function buildSessionTitle(input: string): string {
   if (!compact) return 'New Session';
   return compact.length > 42 ? `${compact.slice(0, 42)}…` : compact;
 }
-
-function tokenize(input: string): string[] {
-  return input
-    .toLowerCase()
-    .split(/[^a-z0-9]+/g)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 1);
+function normalizeText(input: string): string {
+  return (input || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
-function scoreDoc(doc: CourseDoc, tokens: string[]): number {
-  const haystack = `${doc.title} ${doc.content} ${doc.keywords.join(' ')}`.toLowerCase();
-  let score = 0;
-  for (const token of tokens) {
-    if (doc.title.toLowerCase().includes(token)) score += 5;
-    if (doc.keywords.some((kw) => kw.toLowerCase().includes(token))) score += 3;
-    if (haystack.includes(token)) score += 1;
-  }
-  return score;
+function clampText(input: string, maxChars: number): { text: string; truncated: boolean } {
+  if (input.length <= maxChars) return { text: input, truncated: false };
+  return { text: input.slice(0, Math.max(0, maxChars)).trimEnd(), truncated: true };
 }
 
-function searchCourseContent(query: string, limit = 5): Array<{
-  id: string;
-  title: string;
-  url: string;
-  excerpt: string;
-  score: number;
-}> {
-  const tokens = tokenize(query);
-  const ranked = COURSE_DOCS
-    .map((doc) => ({
-      doc,
-      score: scoreDoc(doc, tokens),
-    }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, Math.max(1, Math.min(limit, 10)))
-    .map(({ doc, score }) => ({
-      id: doc.id,
-      title: doc.title,
-      url: doc.url,
-      excerpt: doc.content,
-      score,
-    }));
-  return ranked;
+function canonicalizePathname(pathname: string): string {
+  const p = (pathname || '/').trim() || '/';
+  if (p === '/') return '/';
+  return p.replace(/\/+$/g, '');
 }
 
-function getCourseOverview() {
-  return {
-    title: 'Tools in Data Science',
-    weeks: 10,
-    phases: ['Foundations', 'AI Core', 'Advanced AI', 'Production'],
-    labs: 17,
-    keyTopics: ['Dev tools', 'APIs', 'LLMs', 'RAG', 'Agents', 'Vision', 'Finetuning', 'CI/CD', 'MLOps'],
-    primaryRoutes: ['/intro', '/week-1', '/week-2', '/week-3', '/week-4', '/week-5', '/week-6', '/week-7', '/week-8', '/week-9', '/week-10', '/labs'],
-  };
-}
+function extractSidebarMarkdown(maxChars = 16000): string {
+  const sidebarRoot =
+    (document.querySelector('.theme-doc-sidebar-container') as HTMLElement | null) ??
+    (document.querySelector('.navbar-sidebar__items') as HTMLElement | null) ??
+    (document.querySelector('.navbar') as HTMLElement | null);
 
-function getCurrentPageContext() {
-  const path = window.location.pathname;
-  const title = document.title;
-  const headings = Array.from(document.querySelectorAll('main h1, main h2, main h3'))
-    .map((h) => h.textContent?.trim() || '')
-    .filter(Boolean)
-    .slice(0, 25);
-  const mainText = (document.querySelector('main')?.textContent || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 4000);
+  if (!sidebarRoot) return '(No navigation found on this page.)';
 
-  return {
-    path,
-    title,
-    headings,
-    textSnippet: mainText,
-  };
-}
+  const menuRoot =
+    (sidebarRoot.querySelector('ul.menu__list') as HTMLElement | null) ??
+    (sidebarRoot.querySelector('nav ul') as HTMLElement | null);
 
-function parseToolArgs(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw);
-    return isRecord(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
+  if (menuRoot) {
+    const lines: string[] = [];
+    const walk = (ul: Element, depth: number) => {
+      const items = Array.from(ul.children).filter((c) => c.tagName.toLowerCase() === 'li');
+      for (const li of items) {
+        const labelEl = Array.from(li.children).find((c) => {
+          const tag = c.tagName.toLowerCase();
+          return tag === 'a' || tag === 'button';
+        }) as HTMLElement | undefined;
 
-function executeToolCall(name: string, args: Record<string, unknown>): unknown {
-  if (name === 'search_course_content') {
-    const query = typeof args.query === 'string' ? args.query : '';
-    const limit = typeof args.limit === 'number' ? args.limit : 5;
-    return {
-      query,
-      results: searchCourseContent(query, limit),
+        const text = (labelEl?.textContent ?? '').replace(/\s+/g, ' ').trim();
+        const isLink = labelEl?.tagName.toLowerCase() === 'a';
+        const href = isLink ? ((labelEl as HTMLAnchorElement).getAttribute('href') ?? '') : '';
+        const safeHref = href && !href.startsWith('#') && !/^javascript:/i.test(href) ? href : '';
+
+        if (text) {
+          const bullet = safeHref ? `- [${text}](${safeHref})` : `- ${text}`;
+          lines.push(`${'  '.repeat(depth)}${bullet}`);
+        }
+
+        const childUl = Array.from(li.children).find((c) => c.tagName.toLowerCase() === 'ul');
+        if (childUl) walk(childUl, depth + 1);
+      }
     };
+
+    walk(menuRoot, 0);
+    const md = normalizeText(lines.join('\n'));
+    const clamped = clampText(md, maxChars);
+    return clamped.truncated ? `${clamped.text}\n\n...(sidebar truncated)` : (clamped.text || '(Sidebar empty.)');
   }
-  if (name === 'get_course_overview') {
-    return getCourseOverview();
+
+  const links = Array.from(sidebarRoot.querySelectorAll('a'))
+    .map((a) => {
+      const href = a.getAttribute('href') ?? '';
+      const text = (a.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (!href || !text) return null;
+      if (href.startsWith('#')) return null;
+      if (/^javascript:/i.test(href)) return null;
+      return { href, text };
+    })
+    .filter((x): x is { href: string; text: string } => Boolean(x));
+
+  const deduped: Array<{ href: string; text: string }> = [];
+  const seen = new Set<string>();
+  for (const l of links) {
+    const key = `${l.text}|${l.href}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(l);
   }
-  if (name === 'get_current_page_context') {
-    return getCurrentPageContext();
-  }
-  return { error: `Unknown tool: ${name}` };
+
+  const md = normalizeText(deduped.map((l) => `- [${l.text}](${l.href})`).join('\n'));
+  const clamped = clampText(md, maxChars);
+  return clamped.truncated ? `${clamped.text}\n\n...(sidebar truncated)` : (clamped.text || '(Sidebar empty.)');
 }
 
-function buildLocalFallback(query: string): string {
-  const results = searchCourseContent(query, 4);
-  if (results.length === 0) {
-    return "I couldn't find an exact match in local context. Try asking about a specific week, lab, setup step, or tool.";
-  }
-  const lines = results
-    .map((r, i) => `${i + 1}. **${r.title}** — ${r.excerpt}\n   ↳ ${r.url}`)
-    .join('\n');
-  return `I searched local course context and found:\n\n${lines}`;
+function extractCurrentPageMarkdown(maxChars = 32000): string {
+  const contentRoot =
+    (document.querySelector('article .theme-doc-markdown') as HTMLElement | null) ??
+    (document.querySelector('.theme-doc-markdown') as HTMLElement | null) ??
+    (document.querySelector('main') as HTMLElement | null);
+
+  if (!contentRoot) return '(No page content found.)';
+
+  const title = (document.querySelector('main h1')?.textContent ?? document.title ?? '').trim();
+  const raw = contentRoot.innerText || contentRoot.textContent || '';
+  const normalized = normalizeText(raw);
+  const clamped = clampText(normalized, maxChars);
+
+  const header = [
+    title ? `# ${title}` : '# Page',
+    `Path: ${canonicalizePathname(window.location.pathname)}`,
+  ].join('\n');
+
+  const suffix = clamped.truncated ? '\n\n...(page content truncated)' : '';
+  return `${header}\n\n${clamped.text}${suffix}`.trim();
 }
 
-async function runToolAwareCompletion(params: {
+function buildInjectedContext(session: ChatSession): {
+  injectedContext: string;
+  pagePath: string;
+  includedFullPage: boolean;
+} {
+  const pagePath = canonicalizePathname(window.location.pathname);
+  const sidebar = extractSidebarMarkdown();
+
+  const hasPageAlready = session.sentPagePaths.includes(pagePath);
+  const includedFullPage = !hasPageAlready;
+
+  const page = includedFullPage
+    ? extractCurrentPageMarkdown()
+    : normalizeText([
+        (document.querySelector('main h1')?.textContent ?? document.title ?? '').trim() || '# Page',
+        `Path: ${pagePath}`,
+        '(Page content already provided earlier in this session; not repeating it.)',
+      ].join('\n'));
+
+  return {
+    injectedContext: `Context for this turn (use as reference):\n\n## Sidebar Navigation\n${sidebar}\n\n## Current Page\n${page}`,
+    pagePath,
+    includedFullPage,
+  };
+}
+
+async function runContextCompletion(params: {
   provider: ChatProvider;
   history: Message[];
+  injectedContext: string;
 }): Promise<string> {
   const endpoint = `${params.provider.baseUrl.replace(/\/+$/g, '')}/chat/completions`;
   const headers: Record<string, string> = {
@@ -585,69 +450,44 @@ async function runToolAwareCompletion(params: {
 
   const requestMessages: OpenRouterMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: params.injectedContext },
     ...params.history.map((m) => ({
       role: m.role,
       content: m.content,
     })),
   ];
 
-  for (let i = 0; i < 5; i += 1) {
-    const body = {
-      model: params.provider.activeModel,
-      temperature: 0.2,
-      messages: requestMessages,
-      tools: TOOL_DEFINITIONS,
-      tool_choice: 'auto',
-    };
+  const body = {
+    model: params.provider.activeModel,
+    temperature: 0.2,
+    messages: requestMessages,
+  };
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
 
-    if (!res.ok) {
-      throw new Error(`Model request failed (${res.status})`);
-    }
-
-    const data = (await res.json()) as OpenRouterResponse;
-    if (data.error) {
-      const msg =
-        typeof data.error === 'string'
-          ? data.error
-          : data.error.message || 'Unknown provider error';
-      throw new Error(msg);
-    }
-
-    const msg = data.choices?.[0]?.message;
-    if (!msg) throw new Error('No response choices returned');
-
-    const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
-    const content = typeof msg.content === 'string' ? msg.content : '';
-
-    if (toolCalls.length === 0) {
-      if (content.trim()) return content.trim();
-      throw new Error('Empty assistant response');
-    }
-
-    requestMessages.push({
-      role: 'assistant',
-      content: content || null,
-      tool_calls: toolCalls,
-    });
-
-    for (const call of toolCalls) {
-      const args = parseToolArgs(call.function.arguments || '{}');
-      const toolResult = executeToolCall(call.function.name, args);
-      requestMessages.push({
-        role: 'tool',
-        tool_call_id: call.id,
-        content: JSON.stringify(toolResult),
-      });
-    }
+  if (!res.ok) {
+    throw new Error(`Model request failed (${res.status})`);
   }
 
-  throw new Error('Tool-call loop exceeded safety limit');
+  const data = (await res.json()) as OpenRouterResponse;
+  if (data.error) {
+    const msg =
+      typeof data.error === 'string'
+        ? data.error
+        : data.error.message || 'Unknown provider error';
+    throw new Error(msg);
+  }
+
+  const msg = data.choices?.[0]?.message;
+  if (!msg) throw new Error('No response choices returned');
+
+  const content = typeof msg.content === 'string' ? msg.content : '';
+  if (!content.trim()) throw new Error('Empty assistant response');
+  return content.trim();
 }
 
 function downloadTextFile(filename: string, content: string): void {
@@ -1095,6 +935,23 @@ function ChatPanelInner() {
     });
   }, []);
 
+  const markPageContextSent = useCallback((pagePath: string) => {
+    const canonical = canonicalizePathname(pagePath);
+    setChatState((prev) => {
+      const activeId = prev.activeSessionId;
+      const sessions = prev.sessions.map((s) => {
+        if (s.id !== activeId) return s;
+        if (s.sentPagePaths.includes(canonical)) return s;
+        return {
+          ...s,
+          sentPagePaths: [...s.sentPagePaths, canonical].slice(-MAX_SENT_PAGES),
+          updatedAt: now(),
+        };
+      });
+      return { ...prev, sessions };
+    });
+  }, []);
+
   const clearActiveSession = useCallback(() => {
     if (!showClearConfirm) {
       setShowClearConfirm(true);
@@ -1105,7 +962,7 @@ function ChatPanelInner() {
     setChatState((prev) => {
       const sessions = prev.sessions.map((s) =>
         s.id === prev.activeSessionId
-          ? { ...s, messages: [], title: 'New Session', updatedAt: now() }
+          ? { ...s, messages: [], sentPagePaths: [], title: 'New Session', updatedAt: now() }
           : s
       );
       return { ...prev, sessions };
@@ -1216,7 +1073,7 @@ function ChatPanelInner() {
         timestamp: now(),
       };
 
-      const historyForModel = [...activeSession.messages, userMsg].slice(-30);
+      const historyForModel = [...activeSession.messages, userMsg];
       appendMessage(userMsg);
       setInput('');
       setIsLoading(true);
@@ -1224,15 +1081,20 @@ function ChatPanelInner() {
 
       try {
         let responseText = '';
+        const ctx = buildInjectedContext(activeSession);
         if (!activeProvider.apiKey.trim()) {
           responseText =
-            `${buildLocalFallback(trimmed)}\n\n---\n` +
-            '⚠️ API key is not configured. Open **Config** and add your provider key to enable full LLM responses.';
+            '⚠️ API key is not configured. Open **Config** and add your provider key to enable LLM responses.';
         } else {
-          responseText = await runToolAwareCompletion({
+          responseText = await runContextCompletion({
             provider: activeProvider,
             history: historyForModel,
+            injectedContext: ctx.injectedContext,
           });
+
+          if (ctx.includedFullPage) {
+            markPageContextSent(ctx.pagePath);
+          }
         }
 
         const assistantMsg: Message = {
@@ -1248,8 +1110,7 @@ function ChatPanelInner() {
           id: makeId('msg'),
           role: 'assistant',
           content:
-            `${buildLocalFallback(trimmed)}\n\n---\n` +
-            '⚠️ Live model call failed. Returned answer from local course context tools.',
+            '⚠️ Live model call failed. Please try again (or check your provider settings).',
           timestamp: now(),
         };
         appendMessage(assistantMsg);
@@ -1258,7 +1119,7 @@ function ChatPanelInner() {
         setTimeout(() => inputRef.current?.focus(), 50);
       }
     },
-    [input, isLoading, activeSession, activeProvider, appendMessage]
+    [input, isLoading, activeSession, activeProvider, appendMessage, markPageContextSent]
   );
 
   const resizeHandle = useCallback(

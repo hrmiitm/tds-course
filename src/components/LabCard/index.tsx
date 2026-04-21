@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
 import { ArrowRight, Clock } from 'lucide-react';
+import styles from './LabCard.module.css';
 
 interface LabCardProps {
   labNumber: number;
@@ -22,137 +23,45 @@ export default function LabCard({ labNumber, title, description, duration, diffi
   const diffStyle = difficultyColors[difficulty];
 
   return (
-    <div style={{
-      background: 'var(--tds-surface)',
-      border: '1px solid var(--tds-border)',
-      borderRadius: 16,
-      overflow: 'hidden',
-      boxShadow: 'var(--tds-shadow-sm)',
-      transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-    }}
-    onMouseEnter={(e) => {
-      (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--tds-shadow-md)';
-      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-    }}
-    onMouseLeave={(e) => {
-      (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--tds-shadow-sm)';
-      (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-    }}
+    <Link
+      to={href}
+      className={styles.card}
+      style={{
+        ['--lab-accent' as any]: diffStyle.border,
+        ['--lab-accent-soft' as any]: diffStyle.bg,
+        ['--lab-accent-ink' as any]: diffStyle.color,
+      } as React.CSSProperties}
     >
-      {/* Color bar */}
-      <div style={{
-        height: 4,
-        background: diffStyle.border,
-      }} />
+      <div className={styles.cardInner}>
+        <div className={styles.topBar} />
 
-      <div style={{ padding: 24 }}>
-        {/* Lab number + difficulty */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 12,
-        }}>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            background: 'var(--ifm-color-primary)',
-            color: '#ffffff',
-            fontSize: 14,
-            fontWeight: 700,
-          }}>
-            {labNumber}
-          </span>
-          <span style={{
-            padding: '2px 10px',
-            borderRadius: 999,
-            fontSize: 11,
-            fontWeight: 500,
-            background: diffStyle.bg,
-            color: diffStyle.color,
-          }}>
-            {difficulty}
-          </span>
+        <div className={styles.headerRow}>
+          <span className={styles.numberChip}>#{labNumber}</span>
+          <span className={styles.difficultyChip}>{difficulty}</span>
         </div>
 
-        {/* Title */}
-        <h3 style={{
-          fontSize: 17,
-          fontWeight: 600,
-          marginBottom: 8,
-          color: 'var(--tds-text-primary)',
-        }}>
-          {title}
-        </h3>
+        <div>
+          <h3 className={styles.title}>{title}</h3>
+          <p className={styles.description}>{description}</p>
+        </div>
 
-        {/* Description */}
-        <p style={{
-          fontSize: 14,
-          color: 'var(--tds-text-secondary)',
-          lineHeight: 1.6,
-          marginBottom: 12,
-        }}>
-          {description}
-        </p>
-
-        {/* Tags */}
-        <div style={{
-          display: 'flex',
-          gap: 6,
-          flexWrap: 'wrap',
-          marginBottom: 16,
-        }}>
+        <div className={styles.tagRow}>
           {tags.map((tag) => (
-            <span key={tag} style={{
-              padding: '2px 8px',
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 500,
-              background: 'var(--tds-surface-secondary)',
-              color: 'var(--tds-text-secondary)',
-              border: '1px solid var(--tds-border)',
-            }}>
+            <span key={tag} className={styles.tag}>
               {tag}
             </span>
           ))}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 12,
-            color: 'var(--tds-text-tertiary)',
-          }}>
+        <div className={styles.footerRow}>
+          <span className={styles.duration}>
             <Clock size={12} /> {duration}
           </span>
-          <Link
-            to={href}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--ifm-color-primary)',
-              textDecoration: 'none',
-              transition: 'gap 0.15s',
-            }}
-          >
+          <span className={styles.cta}>
             Start Lab <ArrowRight size={14} />
-          </Link>
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

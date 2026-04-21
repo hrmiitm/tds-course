@@ -383,7 +383,7 @@ function Features(): React.JSX.Element {
 }
 
 function PhaseAccordion(): React.JSX.Element {
-  const [open, setOpen] = useState<PhaseId | null>('ai-core');
+  const [open, setOpen] = useState<PhaseId | null>(null);
   const [openTopics, setOpenTopics] = useState<Record<number, boolean>>({});
 
   const weeksById = useMemo(() => new Map(WEEKS.map((w) => [w.id, w])), []);
@@ -493,16 +493,20 @@ function LabsSection(): React.JSX.Element {
         <div className={styles.labsGrid}>
           {LABS.map((lab) => (
             <Link key={lab.number} to={lab.href} className={styles.labCard}>
-              <div className={styles.labTop}>
-                <div className={styles.labTitleRow}>
-                  <span className={styles.labNum}>#{lab.number}</span>
-                  <span className={styles.labName}>{lab.title}</span>
-                </div>
+              <div className={styles.labIndex} aria-hidden="true">
+                <div className={styles.labIndexLabel}>Lab</div>
+                <div className={styles.labIndexValue}>{lab.number}</div>
+              </div>
+
+              <div className={styles.labContent}>
+                <div className={styles.labTitle}>{lab.title}</div>
                 <div className={styles.labMeta}>
                   <span className={`${styles.labBadge} ${badgeClass(lab.difficulty)}`}>{lab.difficulty}</span>
                   <span className={styles.labTime}>{lab.duration}</span>
                 </div>
               </div>
+
+              <ArrowRight size={18} className={styles.labArrow} aria-hidden="true" />
             </Link>
           ))}
         </div>

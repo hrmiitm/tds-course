@@ -4,10 +4,18 @@
 
 /* ---------- FAB ---------- */
 
-.fab {
+.fabWrap {
   position: fixed;
   bottom: 24px;
   right: 24px;
+  width: 52px;
+  height: 52px;
+  z-index: 300;
+}
+
+.fab {
+  position: absolute;
+  inset: 0;
   width: 52px;
   height: 52px;
   border-radius: 14px;
@@ -31,6 +39,27 @@
   transform: scale(0.97);
 }
 
+.fabHideBtn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--tds-border);
+  background: var(--tds-surface);
+  color: var(--tds-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.fabHideBtn:hover {
+  background: var(--tds-surface-secondary);
+}
+
 /* ---------- Drawer ---------- */
 
 .drawer {
@@ -43,9 +72,13 @@
   border-radius: 16px;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.35);
   overflow: hidden;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease, height 0.18s ease, width 0.18s ease;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+}
+
+.drawerCollapsed {
+  min-height: 42px;
 }
 
 .drawerNoBlur {
@@ -421,6 +454,26 @@
   background: rgba(217, 48, 37, 0.12);
 }
 
+/* ---------- Collapsed Panel ---------- */
+
+.panelContent {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelContentCollapsed {
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panelContentHidden {
+  display: none;
+}
+
 /* ---------- Iframe Wrapper ---------- */
 
 .iframeWrapper {
@@ -439,6 +492,10 @@
   border: none;
   display: block;
   background: #1e1e1e;
+}
+
+.iframeResizing {
+  pointer-events: none;
 }
 
 .connectingOverlay {
@@ -478,11 +535,51 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 24px 20px;
   gap: 16px;
   overflow-y: auto;
-  max-height: calc(100% - 42px);
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.folderRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.folderRow .connectInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.browseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #3d3d3d;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8eaed;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.browseBtn:hover {
+  border-color: #5a5a5a;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.openPathHint {
+  margin-top: 6px;
+  color: #5f6368;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .connectCard {
@@ -935,11 +1032,16 @@
 /* ---------- Responsive ---------- */
 
 @media (max-width: 768px) {
-  .fab {
+  .fabWrap {
     width: 44px;
     height: 44px;
     bottom: 16px;
     right: 16px;
+  }
+
+  .fab {
+    width: 44px;
+    height: 44px;
     border-radius: 12px;
   }
 
@@ -1002,7 +1104,7 @@
 }
 
 @media print {
-  .fab,
+  .fabWrap,
   .drawer {
     display: none !important;
   }

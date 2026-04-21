@@ -7,6 +7,9 @@ import PomodoroWidget from '@site/src/components/PomodoroWidget';
 const PANEL_RIGHT_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="15" x2="15" y1="3" y2="21"/></svg>`;
 const PANEL_RIGHT_CLOSE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="15" x2="15" y1="3" y2="21"/><line x1="9" x2="9" y1="9" y2="15"/><line x1="12" x2="12" y1="9" y2="15"/></svg>`;
 
+const PANEL_LEFT_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="9" x2="9" y1="3" y2="21"/></svg>`;
+const PANEL_LEFT_CLOSE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="9" x2="9" y1="3" y2="21"/><line x1="13" x2="19" y1="9" y2="9"/><line x1="13" x2="19" y1="12" y2="12"/><line x1="13" x2="19" y1="15" y2="15"/></svg>`;
+
 const TERMINAL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 19h16"/><path d="M6 9l3 3-3 3"/><path d="M11 15h7"/></svg>`;
 const CHAT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>`;
 const PRINT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
@@ -15,18 +18,63 @@ const POMODORO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height=
 // Swizzled Root component — adds resizable left sidebar + optional TOC toggle
 export default function Root({ children }: { children: React.ReactNode }): React.JSX.Element {
   useEffect(() => {
-    // ===== 1. Restore sidebar width from localStorage =====
-    try {
-      const savedWidth = localStorage.getItem('tds_sidebar_width');
-      if (savedWidth) {
+    const syncSidebarVisibility = () => {
+      const wantsHidden = document.body.classList.contains('sidebar-hidden');
+      const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 997;
+
+      if (!isDesktop) return;
+
+      if (wantsHidden) {
+        document.documentElement.style.setProperty('--doc-sidebar-width', '0px');
+        return;
+      }
+
+      try {
+        const savedWidth = localStorage.getItem('tds_sidebar_width');
+        if (!savedWidth) {
+          document.documentElement.style.removeProperty('--doc-sidebar-width');
+          return;
+        }
+
         const w = parseInt(savedWidth, 10);
         if (w >= 200 && w <= 450) {
           document.documentElement.style.setProperty('--doc-sidebar-width', `${w}px`);
+        } else {
+          document.documentElement.style.removeProperty('--doc-sidebar-width');
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    // ===== 1. Restore sidebar width from localStorage =====
+    try {
+      const savedWidth = localStorage.getItem('tds_sidebar_width');
+      if (!savedWidth) {
+        document.documentElement.style.removeProperty('--doc-sidebar-width');
+      } else {
+        const w = parseInt(savedWidth, 10);
+        if (w >= 200 && w <= 450) {
+          document.documentElement.style.setProperty('--doc-sidebar-width', `${w}px`);
+        } else {
+          document.documentElement.style.removeProperty('--doc-sidebar-width');
         }
       }
     } catch {
       // ignore
     }
+
+    // ===== 1.5 Restore sidebar visibility from localStorage =====
+    try {
+      const sidebarVisible = localStorage.getItem('tds_sidebar_visible');
+      if (sidebarVisible === 'false') {
+        document.body.classList.add('sidebar-hidden');
+      }
+    } catch {
+      // ignore
+    }
+
+    syncSidebarVisibility();
 
     // ===== 2. Restore TOC visibility from localStorage =====
     try {
@@ -44,6 +92,8 @@ export default function Root({ children }: { children: React.ReactNode }): React
 
     // ===== 3. Sidebar resize handle =====
     const addResizeHandle = () => {
+      if (window.innerWidth < 997) return;
+      if (document.body.classList.contains('sidebar-hidden')) return;
       const sidebar = document.querySelector('.theme-doc-sidebar-container') as HTMLElement | null;
       if (!sidebar || sidebar.querySelector('.sidebar-resize-handle')) return;
 
@@ -97,6 +147,76 @@ export default function Root({ children }: { children: React.ReactNode }): React
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
+    };
+
+    // ===== 3.5 Sidebar hide/show toggle button in navbar =====
+    const addSidebarToggle = () => {
+      const navbarRight = document.querySelector('.navbar__items--right');
+      if (!navbarRight) return;
+
+      const hasDocsSidebar = Boolean(document.querySelector('.theme-doc-sidebar-container'));
+      const existing = document.querySelector('.sidebar-toggle-btn') as HTMLButtonElement | null;
+
+      if (!hasDocsSidebar) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      if (existing) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'sidebar-toggle-btn clean-btn';
+      btn.title = 'Toggle Sidebar';
+      btn.setAttribute('aria-label', 'Toggle Sidebar');
+
+      const isHidden = document.body.classList.contains('sidebar-hidden');
+      btn.innerHTML = isHidden ? PANEL_LEFT_CLOSE_SVG : PANEL_LEFT_OPEN_SVG;
+
+      btn.addEventListener('click', () => {
+        const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 997;
+        const sidebar = document.querySelector('.theme-doc-sidebar-container') as HTMLElement | null;
+
+        const wasHidden = document.body.classList.contains('sidebar-hidden');
+        if (isDesktop && !wasHidden) {
+          try {
+            if (sidebar) {
+              const w = sidebar.offsetWidth;
+              if (w > 0) {
+                localStorage.setItem('tds_sidebar_width', w.toString());
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        const nowHidden = document.body.classList.toggle('sidebar-hidden');
+        try {
+          localStorage.setItem('tds_sidebar_visible', (!nowHidden).toString());
+        } catch {
+          // ignore
+        }
+
+        if (isDesktop) {
+          if (nowHidden) {
+            document.documentElement.style.setProperty('--doc-sidebar-width', '0px');
+          } else {
+            syncSidebarVisibility();
+          }
+        }
+
+        btn.innerHTML = nowHidden ? PANEL_LEFT_CLOSE_SVG : PANEL_LEFT_OPEN_SVG;
+      });
+
+      const tocBtn = navbarRight.querySelector('.toc-toggle-btn');
+      const githubLink = navbarRight.querySelector('a[href*="github"]');
+      const anchor = tocBtn || githubLink;
+
+      if (anchor) {
+        navbarRight.insertBefore(btn, anchor);
+      } else {
+        navbarRight.appendChild(btn);
+      }
     };
 
     // ===== 4. Chat + Terminal buttons in navbar =====
@@ -173,17 +293,22 @@ export default function Root({ children }: { children: React.ReactNode }): React
     addResizeHandle();
     addPanelToggles();
     addTocToggle();
+    addSidebarToggle();
+
+    window.addEventListener('resize', syncSidebarVisibility);
 
     // Re-run on DOM changes (Docusaurus SPA navigation remounts components)
     const observer = new MutationObserver(() => {
       addResizeHandle();
       addPanelToggles();
       addTocToggle();
+      addSidebarToggle();
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       window.removeEventListener('tds:print', onPrint);
+      window.removeEventListener('resize', syncSidebarVisibility);
       observer.disconnect();
       // Clean up resize event listeners
       document.querySelectorAll('.sidebar-resize-handle').forEach((handle) => {

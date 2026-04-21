@@ -1039,58 +1039,125 @@
 }
 
 .labCard {
-  display: block;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 16px;
-  text-decoration: none;
-  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
-  min-height: 86px;
-}
-
-.labTop {
-  display: grid;
-  gap: 6px;
-}
-
-:global([data-theme='light']) .labCard {
-  background: color-mix(in srgb, var(--tds-surface) 82%, transparent);
-  border-color: color-mix(in srgb, var(--tds-border) 85%, transparent);
-}
-
-.labCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(45, 212, 191, 0.30);
-  background: rgba(255, 255, 255, 0.05);
-  text-decoration: none;
-}
-
-:global([data-theme='light']) .labCard:hover {
-  background: color-mix(in srgb, var(--tds-surface-secondary) 75%, transparent);
-}
-
-.labTitleRow {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--tds-border) 92%, transparent);
+  background: var(--tds-surface);
+  padding: 16px 16px 16px 18px;
+  text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  min-height: 112px;
+  box-shadow: var(--tds-shadow-sm);
 }
 
-.labNum {
-  font-size: 12px;
+.labCard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: var(--lab-card-accent, var(--ifm-color-primary));
+  pointer-events: none;
+}
+
+.labCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+}
+
+.labCard:nth-child(3n + 1) {
+  --lab-card-accent: #1a73e8;
+  --lab-card-accent-soft: rgba(26, 115, 232, 0.14);
+}
+
+.labCard:nth-child(3n + 2) {
+  --lab-card-accent: #1d9e75;
+  --lab-card-accent-soft: rgba(29, 158, 117, 0.14);
+}
+
+.labCard:nth-child(3n + 3) {
+  --lab-card-accent: #f29900;
+  --lab-card-accent-soft: rgba(242, 153, 0, 0.14);
+}
+
+.labIndex {
+  position: relative;
+  z-index: 1;
+  padding: 2px 12px 2px 4px;
+  border-right: 1px solid color-mix(in srgb, var(--tds-border) 80%, transparent);
+  min-width: 70px;
+}
+
+.labIndexLabel {
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--tds-text-tertiary);
 }
 
-.labName {
+.labIndexValue {
+  margin-top: 2px;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  color: var(--tds-text-primary);
+  line-height: 1.05;
+}
+
+.labContent {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.labTitle {
   color: var(--tds-text-primary);
   font-weight: 900;
   letter-spacing: -0.02em;
+  line-height: 1.22;
+}
+
+.labArrow {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  color: var(--tds-text-tertiary);
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+:global([data-theme='light']) .labCard {
+  background: var(--tds-surface);
+}
+
+.labCard:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--lab-card-accent) 34%, var(--tds-border));
+  box-shadow: var(--tds-shadow-md);
+  text-decoration: none;
+}
+
+.labCard:hover .labArrow {
+  transform: translateX(2px);
+  color: var(--lab-card-accent);
+}
+
+:global([data-theme='light']) .labCard:hover {
+  background: var(--tds-surface);
 }
 
 .labMeta {
-  margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1102,6 +1169,59 @@
   font-size: 11px;
   font-weight: 900;
   border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--lab-card-accent) 12%, var(--tds-surface));
+  color: var(--lab-card-accent);
+}
+
+.labBadge,
+.labTime {
+  position: relative;
+  z-index: 1;
+}
+
+.labCard:nth-child(3n + 1) .labBadge {
+  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.10);
+}
+
+.labCard:nth-child(3n + 2) .labBadge {
+  box-shadow: 0 0 0 1px rgba(29, 158, 117, 0.10);
+}
+
+.labCard:nth-child(3n + 3) .labBadge {
+  box-shadow: 0 0 0 1px rgba(242, 153, 0, 0.10);
+}
+
+.labCard:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ifm-color-primary) 35%, transparent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 960px) {
+  .labCard {
+    min-height: 104px;
+  }
+}
+
+@media (max-width: 560px) {
+  .labCard {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .labIndex {
+    min-width: 64px;
+    padding-right: 10px;
+  }
+
+  .labIndexValue {
+    font-size: 20px;
+  }
+
+  .labMeta {
+    flex-wrap: wrap;
+  }
 }
 
 .labEasy {
