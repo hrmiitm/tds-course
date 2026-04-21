@@ -47,6 +47,8 @@ export default function Root({ children }: { children: React.ReactNode }): React
       }
     };
 
+    const isDesktopViewport = () => typeof window !== 'undefined' && window.innerWidth >= 997;
+
     // ===== 1. Restore sidebar width from localStorage =====
     try {
       const savedWidth = localStorage.getItem('tds_sidebar_width');
@@ -154,8 +156,13 @@ export default function Root({ children }: { children: React.ReactNode }): React
       const navbarRight = document.querySelector('.navbar__items--right');
       if (!navbarRight) return;
 
-      const hasDocsSidebar = Boolean(document.querySelector('.theme-doc-sidebar-container'));
       const existing = document.querySelector('.sidebar-toggle-btn') as HTMLButtonElement | null;
+      if (!isDesktopViewport()) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      const hasDocsSidebar = Boolean(document.querySelector('.theme-doc-sidebar-container'));
 
       if (!hasDocsSidebar) {
         if (existing) existing.remove();
@@ -224,6 +231,11 @@ export default function Root({ children }: { children: React.ReactNode }): React
       const navbarRight = document.querySelector('.navbar__items--right');
       if (!navbarRight) return;
 
+      if (!isDesktopViewport()) {
+        navbarRight.querySelectorAll('.tds-panel-toggle-btn').forEach((btn) => btn.remove());
+        return;
+      }
+
       const anchor =
         (navbarRight.querySelector('.toc-toggle-btn') as HTMLElement | null) ||
         (navbarRight.querySelector('a[href*="github"]') as HTMLElement | null) ||
@@ -259,7 +271,15 @@ export default function Root({ children }: { children: React.ReactNode }): React
     // ===== 5. TOC toggle button in navbar =====
     const addTocToggle = () => {
       const navbarRight = document.querySelector('.navbar__items--right');
-      if (!navbarRight || document.querySelector('.toc-toggle-btn')) return;
+      if (!navbarRight) return;
+
+      const existing = document.querySelector('.toc-toggle-btn');
+      if (!isDesktopViewport()) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      if (existing) return;
 
       const btn = document.createElement('button');
       btn.className = 'toc-toggle-btn clean-btn';
