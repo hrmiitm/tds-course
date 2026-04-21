@@ -201,6 +201,14 @@
   user-select: none;
 }
 
+.headerFloating {
+  cursor: grab;
+}
+
+.headerFloating:active {
+  cursor: grabbing;
+}
+
 .headerLeft {
   display: flex;
   align-items: center;

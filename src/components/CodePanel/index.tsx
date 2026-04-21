@@ -236,10 +236,10 @@ function CodePanelInner() {
 
     // floating
     const height = Math.min(vh - PANEL_MARGIN * 2, dims.height === -1 ? vh * 0.6 : dims.height);
-    const width = Math.min(vw - PANEL_MARGIN * 2, dims.width === -1 ? vw - PANEL_MARGIN * 2 : dims.width);
+    const width = Math.min(vw - PANEL_MARGIN * 2, dims.width === -1 ? Math.min(800, Math.round(vw * 0.6)) : dims.width);
 
-    let top = dims.top === -1 ? vh - height - PANEL_MARGIN : dims.top;
-    let left = dims.left === -1 ? PANEL_MARGIN : dims.left;
+    let top = dims.top === -1 ? Math.round((vh - height) / 2) : dims.top;
+    let left = dims.left === -1 ? Math.round((vw - width) / 2) : dims.left;
 
     top = Math.max(PANEL_MARGIN, Math.min(top, vh - PANEL_MARGIN - height));
     left = Math.max(PANEL_MARGIN, Math.min(left, vw - PANEL_MARGIN - width));
@@ -596,6 +596,66 @@ function CodePanelInner() {
     window.open(connectedUrl, '_blank');
   }, [connectedUrl]);
 
+  /* ---- Drag system ---- */
+  const startDrag = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (dockMode !== 'floating') return;
+      
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('input') || target.closest('label')) {
+        return;
+      }
+
+      e.preventDefault();
+      
+      const point = 'touches' in e ? e.touches[0] : e;
+      const cd = computedDims();
+      
+      const dragStart = {
+        x: point.clientX,
+        y: point.clientY,
+        top: cd.top,
+        left: cd.left,
+      };
+
+      const onMove = (ev: MouseEvent | TouchEvent) => {
+        if ('touches' in ev && ev.cancelable) {
+          ev.preventDefault();
+        }
+        const pt = 'touches' in ev ? ev.touches[0] : ev;
+        const dx = pt.clientX - dragStart.x;
+        const dy = pt.clientY - dragStart.y;
+
+        let newTop = dragStart.top + dy;
+        let newLeft = dragStart.left + dx;
+
+        newTop = Math.max(PANEL_MARGIN, Math.min(newTop, window.innerHeight - cd.height - PANEL_MARGIN));
+        newLeft = Math.max(PANEL_MARGIN, Math.min(newLeft, window.innerWidth - cd.width - PANEL_MARGIN));
+
+        setDims(prev => ({ ...prev, top: newTop, left: newLeft }));
+      };
+
+      const onEnd = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('mouseleave', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onEnd);
+        window.removeEventListener('blur', onEnd);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+      document.addEventListener('mouseleave', onEnd);
+      document.addEventListener('touchmove', onMove, { passive: false } as EventListenerOptions);
+      document.addEventListener('touchend', onEnd);
+      document.addEventListener('touchcancel', onEnd);
+      window.addEventListener('blur', onEnd);
+    },
+    [computedDims, dockMode]
+  );
+
   /* ---- Resize system ---- */
   const startResize = useCallback(
     (e: React.MouseEvent | React.TouchEvent, type: string) => {
@@ -812,7 +872,11 @@ function CodePanelInner() {
           )}
 
           {/* Header */}
-          <div className={styles.header}>
+          <div
+            className={`${styles.header} ${dockMode === 'floating' ? styles.headerFloating : ''}`}
+            onMouseDown={startDrag}
+            onTouchStart={startDrag}
+          >
             <div className={styles.headerLeft}>
               <span className={`${styles.statusDot} ${statusDotClass}`} />
               <span className={styles.headerTitle}>TDS Terminal</span>
