@@ -18,6 +18,7 @@ const config: Config = {
   projectName: 'tds-course',
 
   onBrokenLinks: 'throw',
+  onBrokenAnchors: 'ignore',
 
   i18n: {
     defaultLocale: 'en',
@@ -50,6 +51,21 @@ const config: Config = {
         explicitSearchResultPath: true,
       },
     ],
+    function customWebpackConfig() {
+      return {
+        name: 'custom-webpack-config',
+        configureWebpack() {
+          return {
+            ignoreWarnings: [
+              {
+                module: /vscode-languageserver-types/,
+                message: /Critical dependency: require function is used in a way in which dependencies cannot be statically extracted/,
+              },
+            ],
+          };
+        },
+      };
+    },
   ],
 
   presets: [
